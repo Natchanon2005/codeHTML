@@ -1,0 +1,557 @@
+<!-- ============================================================
+     ANGULAR HTML TEMPLATES
+     ============================================================ -->
+
+<!-- ============================================================
+     FILE: shared/components/navbar/navbar.component.html
+     ============================================================ -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="brand-icon">🫧</div>
+    <span class="brand-text">LaundryPro</span>
+  </div>
+
+  <div class="navbar-menu" *ngIf="authService.isLoggedIn">
+    <a routerLink="/home" routerLinkActive="active">หน้าแรก</a>
+    <a routerLink="/machines" routerLinkActive="active">เครื่องซักผ้า</a>
+    <a routerLink="/booking" routerLinkActive="active">จองเครื่อง</a>
+    <a routerLink="/wallet" routerLinkActive="active">กระเป๋าเงิน</a>
+    <a routerLink="/transactions" routerLinkActive="active">ประวัติ</a>
+    <a routerLink="/vending" routerLinkActive="active">ตู้สินค้า</a>
+    <a routerLink="/admin/dashboard" routerLinkActive="active" *ngIf="authService.isAdmin">แดชบอร์ด</a>
+  </div>
+
+  <div class="navbar-actions" *ngIf="authService.isLoggedIn">
+    <app-notification-bell></app-notification-bell>
+    <div class="wallet-chip" *ngIf="authService.isMember">
+      <span class="wallet-icon">💳</span>
+      <span class="wallet-amount">{{ (authService.currentUser as any)?.walletBalance | number:'1.2-2' }} ฿</span>
+    </div>
+    <div class="user-menu" (click)="toggleUserMenu()">
+      <div class="user-avatar">{{ getUserInitials() }}</div>
+      <span class="user-name">{{ authService.currentUser?.name }}</span>
+      <div class="dropdown" *ngIf="showUserMenu">
+        <a (click)="logout()">ออกจากระบบ</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================================
+     FILE: features/machines/machine-list/machine-list.component.html
+     ============================================================ -->
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title">สถานะเครื่องซักผ้า</h1>
+    <p class="page-subtitle">อัปเดตแบบ Real-time ผ่าน WebSocket</p>
+    <div class="live-badge">
+      <span class="live-dot"></span>
+      <span>LIVE</span>
+    </div>
+  </div>
+
+  <!-- Status Summary Cards -->
+  <div class="status-summary">
+    <div class="status-chip available" (click)="filterStatus='available'">
+      <span class="chip-count">{{ statusCounts.available }}</span>
+      <span class="chip-label">ว่าง</span>
+    </div>
+    <div class="status-chip running" (click)="filterStatus='running'">
+      <span class="chip-count">{{ statusCounts.running }}</span>
+      <span class="chip-label">กำลังซัก</span>
+    </div>
+    <div class="status-chip finished" (click)="filterStatus='finished'">
+      <span class="chip-count">{{ statusCounts.finished }}</span>
+      <span class="chip-label">เสร็จแล้ว</span>
+    </div>
+    <div class="status-chip maintenance" (click)="filterStatus='maintenance'">
+      <span class="chip-count">{{ statusCounts.maintenance }}</span>
+      <span class="chip-label">ซ่อมบำรุง</span>
+    </div>
+    <div class="status-chip all" (click)="filterStatus='all'">
+      <span class="chip-count">{{ machines.length }}</span>
+      <span class="chip-label">ทั้งหมด</span>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-grid" *ngIf="isLoading">
+    <div class="machine-card skeleton" *ngFor="let i of [1,2,3,4,5,6]"></div>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-state" *ngIf="errorMessage && !isLoading">
+    <div class="error-icon">⚠️</div>
+    <p>{{ errorMessage }}</p>
+    <button class="btn btn-primary" (click)="loadMachines()">ลองใหม่</button>
+  </div>
+
+  <!-- Machine Grid -->
+  <div class="machines-grid" *ngIf="!isLoading && !errorMessage">
+    <app-machine-card
+      *ngFor="let machine of filteredMachines; trackBy: trackById"
+      [machine]="machine"
+      (bookMachine)="onBookMachine($event)">
+    </app-machine-card>
+    <div class="empty-state" *ngIf="filteredMachines.length === 0">
+      <div class="empty-icon">🔍</div>
+      <p>ไม่พบเครื่องในสถานะที่เลือก</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     FILE: shared/components/machine-card/machine-card.component.html
+     ============================================================ -->
+<div class="machine-card" [ngClass]="'status-' + machine.Status">
+  <div class="machine-card-header">
+    <div class="machine-number">
+      <span class="machine-icon">{{ getMachineIcon() }}</span>
+      <span>เครื่อง #{{ machine.ID_Machine }}</span>
+    </div>
+    <div class="status-badge" [ngClass]="'badge-' + machine.Status">
+      <span class="status-indicator"></span>
+      {{ getStatusLabel() }}
+    </div>
+  </div>
+
+  <div class="machine-card-body">
+    <div class="machine-spec">
+      <div class="spec-item">
+        <span class="spec-icon">⚖️</span>
+        <span class="spec-value">{{ machine.Capacity }} KG</span>
+      </div>
+      <div class="spec-item">
+        <span class="spec-icon">💰</span>
+        <span class="spec-value">{{ machine.Price | number:'1.0-0' }} บาท</span>
+      </div>
+      <div class="spec-item">
+        <span class="spec-icon">⏱️</span>
+        <span class="spec-value">{{ machine.Duration_Minutes }} นาที</span>
+      </div>
+    </div>
+    <div class="machine-type-badge">{{ machine.Type }}</div>
+  </div>
+
+  <!-- Timer Progress (when running) -->
+  <div class="machine-timer" *ngIf="machine.Status === 'running' && machine.End_Time">
+    <div class="timer-bar">
+      <div class="timer-progress" [style.width.%]="getProgressPercent()"></div>
+    </div>
+    <div class="timer-labels">
+      <span>เสร็จใน {{ getRemainingTime() }}</span>
+      <span>{{ getProgressPercent() | number:'1.0-0' }}%</span>
+    </div>
+  </div>
+
+  <!-- QR Code Button (when available) -->
+  <div class="machine-card-footer" *ngIf="machine.Status === 'available'">
+    <button class="btn btn-book" (click)="bookMachine.emit(machine)">
+      <span class="btn-icon">📋</span>
+      จองเครื่องนี้
+    </button>
+    <button class="btn btn-qr" (click)="showQR()" title="แสดง QR Code">
+      <span>📱</span>
+    </button>
+  </div>
+
+  <!-- QR Code Modal -->
+  <div class="qr-overlay" *ngIf="showQRCode" (click)="showQRCode=false">
+    <div class="qr-modal" (click)="$event.stopPropagation()">
+      <h3>สแกน QR เพื่อเริ่มใช้งาน</h3>
+      <qrcode [qrdata]="machine.QR_Code || ''" [width]="200" [errorCorrectionLevel]="'M'"></qrcode>
+      <p class="qr-code-text">{{ machine.QR_Code }}</p>
+      <button class="btn btn-secondary" (click)="showQRCode=false">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     FILE: features/booking/booking-page/booking-page.component.html
+     ============================================================ -->
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title">จองเครื่องซักผ้า</h1>
+    <div class="wallet-display">
+      <span class="wallet-icon">💳</span>
+      <span>ยอดเงิน: <strong>{{ walletBalance | number:'1.2-2' }}</strong> บาท</span>
+    </div>
+  </div>
+
+  <!-- Available Machines -->
+  <div class="booking-layout">
+    <div class="machine-selection">
+      <h2 class="section-title">เลือกเครื่องซักผ้า</h2>
+      <div class="machines-grid compact">
+        <div
+          class="machine-select-card"
+          *ngFor="let machine of availableMachines"
+          [ngClass]="{ 'selected': selectedMachine?.ID_Machine === machine.ID_Machine }"
+          (click)="selectMachine(machine)">
+          <div class="select-card-header">
+            <span class="machine-type">{{ machine.Type }}</span>
+            <span class="select-indicator" *ngIf="selectedMachine?.ID_Machine === machine.ID_Machine">✓</span>
+          </div>
+          <div class="machine-id">เครื่อง #{{ machine.ID_Machine }}</div>
+          <div class="machine-details">
+            <span>{{ machine.Capacity }} KG</span>
+            <span class="price-tag">{{ machine.Price | number:'1.0-0' }} ฿</span>
+          </div>
+          <div class="wash-time">⏱ {{ machine.Duration_Minutes }} นาที</div>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="availableMachines.length === 0">
+        <div class="empty-icon">😔</div>
+        <p>ไม่มีเครื่องว่างในขณะนี้</p>
+      </div>
+    </div>
+
+    <!-- Booking Summary -->
+    <div class="booking-summary" *ngIf="selectedMachine">
+      <div class="summary-card">
+        <h2 class="summary-title">สรุปการจอง</h2>
+
+        <div class="summary-rows">
+          <div class="summary-row">
+            <span>เครื่องที่เลือก</span>
+            <strong>เครื่อง #{{ selectedMachine.ID_Machine }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>ประเภท</span>
+            <strong>{{ selectedMachine.Type }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>ความจุ</span>
+            <strong>{{ selectedMachine.Capacity }} KG</strong>
+          </div>
+          <div class="summary-row">
+            <span>ระยะเวลา</span>
+            <strong>{{ selectedMachine.Duration_Minutes }} นาที</strong>
+          </div>
+          <div class="summary-divider"></div>
+          <div class="summary-row total">
+            <span>ค่าบริการ</span>
+            <strong class="total-price">{{ selectedMachine.Price | number:'1.2-2' }} บาท</strong>
+          </div>
+          <div class="summary-row balance">
+            <span>ยอดหลังหัก</span>
+            <strong [ngClass]="{ 'text-danger': walletBalance - selectedMachine.Price < 0 }">
+              {{ walletBalance - selectedMachine.Price | number:'1.2-2' }} บาท
+            </strong>
+          </div>
+        </div>
+
+        <div class="insufficient-warning" *ngIf="walletBalance < selectedMachine.Price">
+          <span class="warning-icon">⚠️</span>
+          ยอดเงินไม่เพียงพอ กรุณาเติมเงินก่อน
+          <a routerLink="/wallet" class="topup-link">เติมเงิน</a>
+        </div>
+
+        <button
+          class="btn btn-book btn-large"
+          [disabled]="walletBalance < selectedMachine.Price || isBooking"
+          (click)="confirmBooking()">
+          <span *ngIf="!isBooking">🫧 ยืนยันการจอง</span>
+          <span *ngIf="isBooking" class="loading-spinner">กำลังจอง...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     FILE: features/wallet/wallet.component.html
+     ============================================================ -->
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title">กระเป๋าเงิน</h1>
+  </div>
+
+  <!-- Balance Card -->
+  <div class="wallet-hero-card">
+    <div class="wallet-card-bg"></div>
+    <div class="wallet-card-content">
+      <div class="wallet-label">ยอดเงินคงเหลือ</div>
+      <div class="wallet-balance">{{ walletBalance | number:'1.2-2' }}</div>
+      <div class="wallet-currency">บาท (THB)</div>
+      <div class="wallet-user">{{ authService.currentUser?.name }}</div>
+    </div>
+  </div>
+
+  <!-- Top Up Section -->
+  <div class="topup-section">
+    <h2 class="section-title">เติมเงิน</h2>
+    <div class="quick-amounts">
+      <button
+        class="amount-btn"
+        *ngFor="let amount of quickAmounts"
+        (click)="setTopupAmount(amount)"
+        [ngClass]="{ 'active': topupAmount === amount }">
+        +{{ amount | number:'1.0-0' }} ฿
+      </button>
+    </div>
+    <div class="custom-amount-input">
+      <label>จำนวนที่กำหนดเอง (บาท)</label>
+      <input
+        type="number"
+        [(ngModel)]="topupAmount"
+        placeholder="กรอกจำนวนเงิน"
+        min="1" max="10000"
+        class="form-input">
+    </div>
+    <button
+      class="btn btn-topup btn-large"
+      [disabled]="!topupAmount || topupAmount <= 0 || isTopingUp"
+      (click)="topUp()">
+      <span *ngIf="!isTopingUp">💳 เติมเงิน {{ topupAmount | number:'1.0-0' }} บาท</span>
+      <span *ngIf="isTopingUp">กำลังดำเนินการ...</span>
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     FILE: features/transactions/transaction-history.component.html
+     ============================================================ -->
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title">ประวัติการทำรายการ</h1>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="filter-tabs">
+    <button
+      class="tab-btn"
+      *ngFor="let tab of filterTabs"
+      [ngClass]="{ 'active': activeFilter === tab.value }"
+      (click)="activeFilter = tab.value">
+      {{ tab.label }}
+    </button>
+  </div>
+
+  <!-- Transaction List -->
+  <div class="transaction-list" *ngIf="!isLoading">
+    <div
+      class="transaction-item"
+      *ngFor="let trans of filteredTransactions"
+      [ngClass]="'trans-' + trans.Type">
+
+      <div class="trans-icon-wrap">
+        <span class="trans-icon">{{ getTransIcon(trans.Type) }}</span>
+      </div>
+
+      <div class="trans-details">
+        <div class="trans-type-label">{{ getTransLabel(trans.Type) }}</div>
+        <div class="trans-note">{{ trans.Note || 'ไม่มีหมายเหตุ' }}</div>
+        <div class="trans-time">{{ trans.Time | date:'dd/MM/yyyy HH:mm' }}</div>
+      </div>
+
+      <div class="trans-amount" [ngClass]="trans.Type === 'topup' ? 'amount-plus' : 'amount-minus'">
+        <span>{{ trans.Type === 'topup' ? '+' : '-' }}</span>
+        <span>{{ trans.Amount | number:'1.2-2' }}</span>
+        <span class="currency">฿</span>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="filteredTransactions.length === 0">
+      <div class="empty-icon">📋</div>
+      <p>ยังไม่มีประวัติการทำรายการ</p>
+    </div>
+  </div>
+
+  <div class="loading-list" *ngIf="isLoading">
+    <div class="skeleton-item" *ngFor="let i of [1,2,3,4,5]"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     FILE: features/admin/dashboard/dashboard.component.html
+     ============================================================ -->
+<div class="admin-layout">
+  <div class="admin-sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">🫧 Admin Panel</div>
+    </div>
+    <nav class="sidebar-nav">
+      <a routerLink="/admin/dashboard" routerLinkActive="active">
+        <span class="nav-icon">📊</span> แดชบอร์ด
+      </a>
+      <a routerLink="/admin/machines" routerLinkActive="active">
+        <span class="nav-icon">🫧</span> จัดการเครื่อง
+      </a>
+      <a routerLink="/admin/reports" routerLinkActive="active">
+        <span class="nav-icon">📈</span> รายงาน
+      </a>
+      <a routerLink="/machines" routerLinkActive="active">
+        <span class="nav-icon">🔄</span> สถานะแบบ Real-time
+      </a>
+    </nav>
+  </div>
+
+  <div class="admin-content">
+    <div class="admin-page-header">
+      <h1>แดชบอร์ดผู้ดูแลระบบ</h1>
+      <div class="header-date">{{ today | date:'EEEE, dd MMMM yyyy' }}</div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+      <div class="summary-card income-card">
+        <div class="summary-icon">💰</div>
+        <div class="summary-data">
+          <div class="summary-value">{{ summary.todayIncome | number:'1.2-2' }}</div>
+          <div class="summary-label">รายได้วันนี้ (บาท)</div>
+        </div>
+      </div>
+      <div class="summary-card bookings-card">
+        <div class="summary-icon">📋</div>
+        <div class="summary-data">
+          <div class="summary-value">{{ summary.todayBookings }}</div>
+          <div class="summary-label">การจองวันนี้</div>
+        </div>
+      </div>
+      <div class="summary-card members-card">
+        <div class="summary-icon">👥</div>
+        <div class="summary-data">
+          <div class="summary-value">{{ summary.totalMembers }}</div>
+          <div class="summary-label">สมาชิกทั้งหมด</div>
+        </div>
+      </div>
+      <div class="summary-card machines-card">
+        <div class="summary-icon">🫧</div>
+        <div class="summary-data">
+          <div class="summary-value">{{ summary.availableMachines }}</div>
+          <div class="summary-label">เครื่องว่าง / {{ summary.runningMachines }} กำลังซัก</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3 class="chart-title">รายได้และการจอง 30 วันที่ผ่านมา</h3>
+        <div class="chart-wrapper">
+          <canvas baseChart
+            [data]="chartData"
+            [options]="chartOptions"
+            type="line">
+          </canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3 class="chart-title">สถานะเครื่องซักผ้า</h3>
+        <div class="machine-status-overview">
+          <div class="machine-status-row" *ngFor="let status of machineStatuses">
+            <span class="status-dot" [ngClass]="'dot-' + status.key"></span>
+            <span class="status-name">{{ status.label }}</span>
+            <div class="status-bar-wrap">
+              <div class="status-bar-fill" [style.width.%]="status.percent" [ngClass]="'bar-' + status.key"></div>
+            </div>
+            <span class="status-count">{{ status.count }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     FILE: features/vending/vending.component.html
+     ============================================================ -->
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title">ตู้จำหน่ายสินค้า</h1>
+    <div class="wallet-display">💳 {{ walletBalance | number:'1.2-2' }} ฿</div>
+  </div>
+
+  <div class="products-grid">
+    <div
+      class="product-card"
+      *ngFor="let product of products"
+      [ngClass]="{ 'out-of-stock': product.Stock === 0 }">
+
+      <div class="product-icon">🛒</div>
+      <div class="product-name">{{ product.Product_Name }}</div>
+      <div class="product-stock" [ngClass]="{ 'low-stock': product.Stock < 5 }">
+        คงเหลือ {{ product.Stock }} ชิ้น
+      </div>
+      <div class="product-price">{{ product.Price | number:'1.2-2' }} ฿</div>
+
+      <button
+        class="btn btn-buy"
+        [disabled]="product.Stock === 0 || walletBalance < product.Price"
+        (click)="purchaseProduct(product)">
+        {{ product.Stock === 0 ? 'สินค้าหมด' : 'ซื้อ' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     FILE: features/auth/login/login.component.html
+     ============================================================ -->
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-circle">🫧</div>
+      <h1 class="auth-brand">LaundryPro</h1>
+      <p class="auth-tagline">ระบบจัดการเครื่องซักผ้าออนไลน์</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="auth-form">
+      <!-- Role Selection -->
+      <div class="role-tabs">
+        <button type="button"
+          class="role-tab"
+          *ngFor="let r of roles"
+          [ngClass]="{ 'active': selectedRole === r.value }"
+          (click)="selectedRole = r.value">
+          {{ r.label }}
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">ชื่อผู้ใช้</label>
+        <input
+          type="text"
+          formControlName="username"
+          class="form-input"
+          [ngClass]="{ 'input-error': loginForm.get('username')?.invalid && loginForm.get('username')?.touched }"
+          placeholder="กรอกชื่อผู้ใช้">
+        <span class="error-msg" *ngIf="loginForm.get('username')?.errors?.['required'] && loginForm.get('username')?.touched">
+          กรุณากรอกชื่อผู้ใช้
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">รหัสผ่าน</label>
+        <div class="password-input-wrap">
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            formControlName="password"
+            class="form-input"
+            placeholder="กรอกรหัสผ่าน">
+          <button type="button" class="password-toggle" (click)="showPassword = !showPassword">
+            {{ showPassword ? '🙈' : '👁️' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="error-alert" *ngIf="errorMessage">
+        <span class="alert-icon">⚠️</span>
+        {{ errorMessage }}
+      </div>
+
+      <button type="submit" class="btn btn-auth" [disabled]="loginForm.invalid || isLoading">
+        <span *ngIf="!isLoading">เข้าสู่ระบบ</span>
+        <span *ngIf="isLoading" class="loading-dots">กำลังเข้าสู่ระบบ...</span>
+      </button>
+
+      <div class="auth-links">
+        <span>ยังไม่มีบัญชี?</span>
+        <a routerLink="/auth/register">สมัครสมาชิก</a>
+      </div>
+    </form>
+  </div>
+</div>
