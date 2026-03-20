@@ -1,0 +1,2670 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LaundryPro — ระบบจัดการเครื่องซักผ้า</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090f;
+  --s1:#0e1018;
+  --s2:#13151f;
+  --s3:#191c29;
+  --border:rgba(255,255,255,.07);
+  --border2:rgba(255,255,255,.12);
+  --accent:#5b8def;
+  --accent2:#7c6ef5;
+  --green:#2ed8a0;
+  --amber:#f5a623;
+  --red:#f55f5f;
+  --purple:#b47fea;
+  --t1:#eef1f8;
+  --t2:#8892a8;
+  --t3:#4a5268;
+  --font:'Sarabun',system-ui,sans-serif
+}
+body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden;font-size:15px}
+
+/* NOISE OVERLAY */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4}
+
+/* ───── NAV ───── */
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:.5rem;padding:.65rem 1.4rem;background:rgba(8,9,15,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:.5rem;font-weight:800;font-size:1rem;color:var(--t1);margin-right:.75rem;letter-spacing:-.01em}
+.brand-dot{width:8px;height:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;box-shadow:0 0 8px var(--accent)}
+.nav-links{display:flex;gap:.1rem;flex:1}
+.nav-links button{padding:.32rem .72rem;border-radius:7px;border:none;background:none;color:var(--t3);cursor:pointer;font-family:var(--font);font-size:.82rem;font-weight:500;transition:.15s}
+.nav-links button:hover{color:var(--t2);background:rgba(255,255,255,.04)}
+.nav-links button.active{color:var(--t1);background:rgba(91,141,239,.12)}
+.nav-right{display:flex;align-items:center;gap:.65rem;margin-left:auto}
+.wallet-chip{padding:.28rem .85rem;background:rgba(91,141,239,.1);border:1px solid rgba(91,141,239,.2);border-radius:999px;font-size:.8rem;color:var(--accent);font-weight:600;cursor:pointer;transition:.15s}
+.wallet-chip:hover{background:rgba(91,141,239,.18)}
+.live-badge{display:flex;align-items:center;gap:.3rem;padding:.25rem .65rem;background:rgba(46,216,160,.08);border:1px solid rgba(46,216,160,.2);border-radius:999px;color:var(--green);font-size:.7rem;font-weight:700;letter-spacing:.06em}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse-dot 1.8s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+/* ───── PAGES ───── */
+.page{display:none;padding:2rem 1.6rem;max-width:1280px;margin:0 auto;position:relative;z-index:1;animation:fadein .25s ease}
+.page.active{display:block}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.page-hdr{margin-bottom:1.75rem}
+.page-title{font-size:1.55rem;font-weight:800;letter-spacing:-.02em;color:var(--t1)}
+.page-sub{color:var(--t3);font-size:.83rem;margin-top:.2rem}
+
+/* ───── CARDS ───── */
+.card{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:1.25rem}
+.card-sm{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:1rem}
+
+/* ───── BUTTONS ───── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;padding:.52rem 1.1rem;border:none;border-radius:9px;cursor:pointer;font-family:var(--font);font-size:.83rem;font-weight:600;transition:.18s;line-height:1}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover:not(:disabled){background:#4a7de0;transform:translateY(-1px);box-shadow:0 0 20px rgba(91,141,239,.35)}
+.btn-danger{background:rgba(245,95,95,.15);color:var(--red);border:1px solid rgba(245,95,95,.3)}
+.btn-danger:hover:not(:disabled){background:rgba(245,95,95,.25);transform:translateY(-1px)}
+.btn-ghost{background:rgba(255,255,255,.05);color:var(--t2);border:1px solid var(--border)}
+.btn-ghost:hover:not(:disabled){background:rgba(255,255,255,.09);color:var(--t1)}
+.btn-green{background:var(--green);color:#0a2018}
+.btn-green:hover:not(:disabled){background:#27c490;transform:translateY(-1px);box-shadow:0 0 16px rgba(46,216,160,.3)}
+.btn-full{width:100%;padding:.78rem}
+.btn-sm{padding:.35rem .75rem;font-size:.78rem}
+.btn-icon{width:36px;height:36px;padding:0;border-radius:8px}
+
+/* ───── BADGES ───── */
+.badge{display:inline-flex;align-items:center;gap:.28rem;padding:.2rem .6rem;border-radius:999px;font-size:.7rem;font-weight:600}
+.badge-av{background:rgba(46,216,160,.12);color:var(--green);border:1px solid rgba(46,216,160,.25)}
+.badge-ru{background:rgba(91,141,239,.12);color:var(--accent);border:1px solid rgba(91,141,239,.25)}
+.badge-fi{background:rgba(180,127,234,.12);color:var(--purple);border:1px solid rgba(180,127,234,.25)}
+.badge-ma{background:rgba(245,166,35,.12);color:var(--amber);border:1px solid rgba(245,166,35,.25)}
+.badge-bo{background:rgba(245,166,35,.12);color:var(--amber);border:1px solid rgba(245,166,35,.25)}
+.badge-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.badge-ru .badge-dot{animation:pulse-dot 1.2s infinite}
+
+/* ───── HOME ───── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.75rem}
+.stat-card{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:1.15rem 1.3rem;display:flex;align-items:center;gap:.9rem;transition:.2s;cursor:pointer;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.stat-card.c1::before{background:var(--green)}.stat-card.c2::before{background:var(--accent)}.stat-card.c3::before{background:var(--amber)}.stat-card.c4::before{background:var(--purple)}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.4);border-color:var(--border2)}
+.stat-icon{font-size:1.8rem;flex-shrink:0}
+.stat-val{font-size:1.55rem;font-weight:800;line-height:1;letter-spacing:-.02em}
+.stat-label{font-size:.75rem;color:var(--t3);margin-top:.15rem}
+
+/* ───── MACHINES ───── */
+.status-row{display:flex;gap:.5rem;margin-bottom:1.4rem;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:.4rem;padding:.35rem .85rem;border-radius:999px;font-size:.8rem;font-weight:500;border:1px solid transparent;cursor:pointer;transition:.15s;user-select:none}
+.chip-av{background:rgba(46,216,160,.08);border-color:rgba(46,216,160,.2);color:var(--green)}
+.chip-ru{background:rgba(91,141,239,.08);border-color:rgba(91,141,239,.2);color:var(--accent)}
+.chip-fi{background:rgba(180,127,234,.08);border-color:rgba(180,127,234,.2);color:var(--purple)}
+.chip-ma{background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2);color:var(--amber)}
+.chip-all{background:rgba(255,255,255,.04);border-color:var(--border);color:var(--t2)}
+.chip-num{font-weight:700;font-size:.95rem}
+.machines-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:1rem}
+
+/* MACHINE CARD */
+.mcard{background:var(--s2);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:.25s;cursor:default}
+.mcard:hover{border-color:var(--border2);box-shadow:0 6px 24px rgba(0,0,0,.4);transform:translateY(-2px)}
+.mcard-accent{height:3px}
+.mcard-av .mcard-accent{background:var(--green)}
+.mcard-ru .mcard-accent{background:var(--accent);animation:glow-bar 2s ease-in-out infinite}
+.mcard-fi .mcard-accent{background:var(--purple)}
+.mcard-ma .mcard-accent{background:var(--amber)}
+.mcard-booked .mcard-accent{background:var(--amber);animation:glow-bar 1.5s ease-in-out infinite}
+@keyframes glow-bar{0%,100%{opacity:1}50%{opacity:.35}}
+.mcard-body{padding:1.1rem}
+.mcard-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+.mcard-id{font-weight:700;font-size:.9rem}
+.mcard-type{display:inline-block;padding:.15rem .5rem;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:5px;font-size:.7rem;color:var(--t3);margin-bottom:.65rem}
+.specs{display:flex;gap:.8rem;margin-bottom:.75rem}
+.spec{font-size:.8rem;color:var(--t3)}
+.spec strong{color:var(--t2);font-weight:600}
+
+/* TIMER */
+.timer-wrap{margin-bottom:.8rem}
+.timer-bar{height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-bottom:.3rem}
+.timer-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width 1s linear}
+.timer-labels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--t3)}
+
+.mcard-foot{display:flex;gap:.45rem}
+.btn-book-sm{flex:1}
+
+/* ───── BOOKINGS PAGE ───── */
+.booking-layout{display:grid;grid-template-columns:1fr 320px;gap:1.75rem}
+.section-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:.85rem}
+.mini-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:.6rem}
+.mselect{background:var(--s2);border:2px solid var(--border);border-radius:10px;padding:.85rem;cursor:pointer;transition:.18s}
+.mselect:hover{border-color:var(--border2);background:var(--s3)}
+.mselect.sel{border-color:var(--accent);background:rgba(91,141,239,.07);box-shadow:0 0 0 1px rgba(91,141,239,.3)}
+.msel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem}
+.msel-label{font-size:.72rem;color:var(--t3)}
+.msel-check{color:var(--accent);font-size:1rem}
+.msel-name{font-weight:700;font-size:.88rem;margin-bottom:.3rem}
+.msel-row{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;color:var(--t3)}
+.price-tag{font-weight:700;color:var(--amber);font-size:.95rem}
+
+/* SUMMARY CARD */
+.sum-card{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:1.3rem;position:sticky;top:70px}
+.sum-title{font-weight:700;font-size:.95rem;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.sum-rows{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem}
+.sum-row{display:flex;justify-content:space-between;font-size:.85rem;color:var(--t3)}
+.sum-row strong{color:var(--t1);font-weight:600}
+.sum-div{height:1px;background:var(--border);margin:.25rem 0}
+.sum-total strong{font-size:1.05rem;color:var(--amber)!important}
+.warn-box{display:flex;align-items:center;gap:.45rem;padding:.6rem .85rem;background:rgba(245,95,95,.08);border:1px solid rgba(245,95,95,.2);border-radius:8px;color:#fca5a5;font-size:.8rem;margin-bottom:.9rem;flex-wrap:wrap}
+.topup-link{color:var(--amber);font-weight:600;cursor:pointer;margin-left:.3rem}
+
+/* ───── ACTIVE BOOKINGS ───── */
+.active-booking-card{background:var(--s2);border:1px solid rgba(91,141,239,.25);border-radius:14px;padding:1.2rem;margin-bottom:1rem;position:relative;overflow:hidden}
+.active-booking-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.ab-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem}
+.ab-title{font-weight:700;font-size:.95rem}
+.ab-time{font-size:.78rem;color:var(--t3)}
+.ab-info{display:flex;gap:1.2rem;margin-bottom:.9rem}
+.ab-info-item{font-size:.82rem;color:var(--t3)}
+.ab-info-item strong{color:var(--t2);font-weight:600}
+.ab-countdown{background:rgba(91,141,239,.08);border:1px solid rgba(91,141,239,.15);border-radius:8px;padding:.6rem .9rem;margin-bottom:.9rem;display:flex;align-items:center;gap:.6rem;font-size:.83rem}
+.ab-countdown-val{font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent)}
+.ab-price{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--t3);margin-bottom:.9rem}
+.ab-price strong{color:var(--amber);font-size:1rem}
+
+/* CANCEL CONFIRM MODAL */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.modal-ov.show{display:flex;animation:fadein .2s ease}
+.modal-box{background:var(--s2);border:1px solid var(--border2);border-radius:18px;padding:1.8rem;max-width:380px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.modal-icon{font-size:2.5rem;text-align:center;margin-bottom:.8rem}
+.modal-title{font-size:1.05rem;font-weight:700;text-align:center;margin-bottom:.4rem}
+.modal-sub{font-size:.85rem;color:var(--t3);text-align:center;margin-bottom:1.25rem;line-height:1.6}
+.modal-detail{background:var(--s3);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;margin-bottom:1.3rem}
+.modal-detail-row{display:flex;justify-content:space-between;font-size:.83rem;color:var(--t3);margin-bottom:.35rem}
+.modal-detail-row:last-child{margin-bottom:0}
+.modal-detail-row strong{color:var(--t1);font-weight:600}
+.modal-btns{display:flex;gap:.65rem}
+.modal-btns .btn{flex:1}
+
+/* QR MODAL */
+.qr-modal-box{background:var(--s2);border:1px solid var(--border2);border-radius:18px;padding:1.8rem;text-align:center;max-width:280px;width:90%}
+.qr-box{width:160px;height:160px;background:rgba(255,255,255,.04);border:2px dashed var(--border2);border-radius:12px;margin:0 auto .9rem;display:flex;align-items:center;justify-content:center;font-size:3rem}
+.qr-code{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--t3);margin-bottom:1rem}
+
+/* ───── WALLET ───── */
+.wallet-hero{background:linear-gradient(130deg,#1b2a6b,#2d1b69,#1b3a4b);border:1px solid rgba(91,141,239,.2);border-radius:20px;padding:2rem 1.8rem;margin-bottom:2rem;position:relative;overflow:hidden;box-shadow:0 8px 40px rgba(91,141,239,.15)}
+.wallet-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.04)}
+.wallet-hero::after{content:'';position:absolute;bottom:-40px;left:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.03)}
+.wh{position:relative}
+.wh-label{font-size:.8rem;opacity:.7;margin-bottom:.3rem}
+.wh-bal{font-size:2.8rem;font-weight:800;letter-spacing:-.03em;line-height:1}
+.wh-cur{font-size:.85rem;opacity:.65;margin:.2rem 0 .65rem}
+.wh-user{font-size:.82rem;opacity:.6}
+.topup-area{max-width:440px}
+.amts{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.75rem}
+.amt-btn{padding:.4rem .9rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;color:var(--t2);cursor:pointer;font-weight:600;font-size:.82rem;font-family:var(--font);transition:.15s}
+.amt-btn:hover,.amt-btn.on{background:rgba(91,141,239,.15);border-color:rgba(91,141,239,.3);color:var(--accent)}
+.fi-label{font-size:.78rem;color:var(--t3);margin-bottom:.35rem;display:block}
+.fi-input{width:100%;padding:.6rem 1rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;color:var(--t1);font-family:var(--font);font-size:.9rem;transition:.15s}
+.fi-input:focus{outline:none;border-color:rgba(91,141,239,.5)}
+.fi-input::placeholder{color:var(--t3)}
+
+/* ───── TRANSACTIONS ───── */
+.filter-tabs{display:flex;gap:.35rem;margin-bottom:1.2rem;padding-bottom:.9rem;border-bottom:1px solid var(--border)}
+.tab-btn{padding:.35rem .85rem;background:none;border:1px solid transparent;border-radius:8px;color:var(--t3);cursor:pointer;font-size:.82rem;font-family:var(--font);font-weight:500;transition:.15s}
+.tab-btn:hover{background:rgba(255,255,255,.04);color:var(--t2)}
+.tab-btn.active{background:rgba(91,141,239,.12);border-color:rgba(91,141,239,.25);color:var(--accent)}
+.trans-list{display:flex;flex-direction:column;gap:.55rem}
+.titem{display:flex;align-items:center;gap:.85rem;padding:.85rem 1.1rem;background:var(--s2);border:1px solid var(--border);border-radius:11px;transition:.15s}
+.titem:hover{background:var(--s3);border-color:var(--border2)}
+.tico{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0}
+.tpayment .tico{background:rgba(245,95,95,.12)}
+.ttopup .tico{background:rgba(46,216,160,.12)}
+.trefund .tico{background:rgba(91,141,239,.12)}
+.tdetail{flex:1;min-width:0}
+.ttype{font-weight:600;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tnote{font-size:.76rem;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ttime{font-size:.7rem;color:var(--t3);margin-top:.1rem}
+.tamt{font-size:1rem;font-weight:700;text-align:right;flex-shrink:0}
+.ta-plus{color:var(--green)}.ta-minus{color:var(--red)}
+
+/* ───── ADMIN ───── */
+.admin-layout{display:flex;min-height:calc(100vh - 53px)}
+.adm-side{width:200px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);padding:1.2rem 0}
+.adm-sb-title{padding:0 1rem .9rem;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);border-bottom:1px solid var(--border);margin-bottom:.65rem}
+.adm-sb-nav{display:flex;flex-direction:column;gap:.15rem;padding:0 .6rem}
+.sb-item{display:flex;align-items:center;gap:.5rem;padding:.55rem .7rem;border-radius:8px;color:var(--t3);font-size:.82rem;cursor:pointer;border:none;background:none;font-family:var(--font);transition:.15s;width:100%;text-align:left}
+.sb-item:hover{background:rgba(255,255,255,.04);color:var(--t2)}
+.sb-item.active{background:rgba(91,141,239,.12);color:var(--accent)}
+.adm-content{flex:1;padding:1.75rem;overflow-y:auto}
+.adm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem}
+.adm-head h2{font-size:1.3rem;font-weight:800;letter-spacing:-.02em}
+.adm-date{font-size:.8rem;color:var(--t3)}
+.adm-stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:.85rem;margin-bottom:1.5rem}
+.adm-stat{background:var(--s2);border:1px solid var(--border);border-radius:13px;padding:1.1rem 1.2rem;display:flex;gap:.8rem;align-items:center;transition:.2s}
+.adm-stat:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(0,0,0,.4)}
+.adm-stat-icon{font-size:1.75rem}
+.adm-stat-val{font-size:1.45rem;font-weight:800;line-height:1;letter-spacing:-.02em}
+.adm-stat-label{font-size:.73rem;color:var(--t3);margin-top:.15rem}
+.charts-row{display:grid;grid-template-columns:2fr 1fr;gap:1.1rem}
+.chart-card{background:var(--s2);border:1px solid var(--border);border-radius:13px;padding:1.2rem}
+.chart-title{font-size:.85rem;font-weight:600;color:var(--t3);margin-bottom:1rem}
+.chart-wrap{position:relative;height:250px}
+.ms-list{display:flex;flex-direction:column;gap:.9rem;padding-top:.25rem}
+.ms-row{display:grid;grid-template-columns:8px 72px 1fr 28px;align-items:center;gap:.6rem}
+.ms-dot{width:8px;height:8px;border-radius:50%}
+.ms-name{font-size:.8rem;color:var(--t3)}
+.ms-bar{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.ms-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.ms-count{font-size:.8rem;font-weight:600;text-align:right}
+
+/* ───── VENDING ───── */
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:.85rem}
+.prod-card{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:1.1rem;text-align:center;transition:.25s;display:flex;flex-direction:column;gap:.35rem}
+.prod-card:hover:not(.oos){transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.4);border-color:var(--border2)}
+.prod-card.oos{opacity:.45}
+.prod-ico{font-size:2.2rem;margin-bottom:.1rem}
+.prod-name{font-weight:600;font-size:.85rem;line-height:1.3}
+.prod-stock{font-size:.73rem;color:var(--t3)}
+.prod-stock.low{color:var(--amber)}
+.prod-price{font-size:1.2rem;font-weight:800;color:var(--amber);letter-spacing:-.02em}
+
+/* ───── TOAST ───── */
+.toast-area{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.45rem;pointer-events:none}
+.tst{padding:.7rem 1.1rem;border-radius:10px;font-size:.85rem;font-weight:500;max-width:300px;animation:tst-in .25s ease;pointer-events:auto;border:1px solid transparent;backdrop-filter:blur(12px)}
+.tst-s{background:rgba(20,83,45,.85);color:#4ade80;border-color:rgba(74,222,128,.2)}
+.tst-e{background:rgba(69,10,10,.85);color:#f87171;border-color:rgba(248,113,113,.2)}
+.tst-i{background:rgba(30,27,75,.85);color:#a5b4fc;border-color:rgba(165,180,252,.2)}
+@keyframes tst-in{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+@keyframes pop{0%{transform:scale(.85);opacity:0}70%{transform:scale(1.02)}100%{transform:scale(1);opacity:1}}
+.pop{animation:pop .3s ease}
+
+/* ───── MISC ───── */
+.empty-state{padding:3rem;text-align:center;color:var(--t3)}
+.empty-icon{font-size:3rem;margin-bottom:.75rem;opacity:.5}
+.empty-text{font-size:.9rem}
+.divider{height:1px;background:var(--border);margin:.75rem 0}
+
+@media(max-width:900px){
+  .booking-layout{grid-template-columns:1fr}
+  .charts-row{grid-template-columns:1fr}
+  .admin-layout{flex-direction:column}
+  .adm-side{width:100%;border-right:none;border-bottom:1px solid var(--border)}
+}
+@media(max-width:600px){
+  nav{padding:.6rem .9rem}
+  .nav-links button{padding:.3rem .5rem;font-size:.75rem}
+  .page{padding:1.25rem 1rem}
+}
+
+/* LOGIN SCREEN */
+#login-screen{position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;align-items:center;justify-content:center}
+#login-screen.hidden{display:none}
+.login-bg{position:absolute;inset:0;overflow:hidden}
+.login-bg-orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.15}
+.login-bg-orb1{width:550px;height:550px;background:var(--accent);top:-150px;left:-120px}
+.login-bg-orb2{width:420px;height:420px;background:var(--accent2);bottom:-100px;right:-100px}
+.login-bg-orb3{width:300px;height:300px;background:var(--green);top:50%;left:60%}
+.login-wrap{position:relative;z-index:1;width:100%;max-width:420px;padding:1.5rem}
+.login-logo{text-align:center;margin-bottom:2rem}
+.login-logo-icon{width:58px;height:58px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:1.8rem;margin-bottom:.8rem;box-shadow:0 0 40px rgba(91,141,239,.35)}
+.login-logo-title{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;background:linear-gradient(120deg,#fff 40%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.login-logo-sub{font-size:.82rem;color:var(--t3);margin-top:.25rem}
+.login-card{background:var(--s2);border:1px solid var(--border2);border-radius:20px;padding:2rem;box-shadow:0 24px 64px rgba(0,0,0,.55)}
+.role-tabs{display:flex;gap:.35rem;background:var(--s3);border-radius:11px;padding:.3rem;margin-bottom:1.5rem}
+.role-tab{flex:1;padding:.45rem;border-radius:8px;border:none;background:none;color:var(--t3);cursor:pointer;font-family:var(--font);font-size:.82rem;font-weight:600;transition:.18s}
+.role-tab:hover{color:var(--t2)}
+.role-tab.active{background:var(--s2);color:var(--t1);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.login-field{margin-bottom:1rem}
+.login-label{display:block;font-size:.75rem;color:var(--t3);font-weight:700;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.06em}
+.login-input{width:100%;padding:.7rem 1rem;background:var(--s3);border:1px solid var(--border);border-radius:10px;color:var(--t1);font-family:var(--font);font-size:.9rem;transition:.18s}
+.login-input:focus{outline:none;border-color:rgba(91,141,239,.5);background:rgba(91,141,239,.04)}
+.login-input::placeholder{color:var(--t3)}
+.login-input.shake{animation:shake .4s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.login-hint{display:flex;align-items:flex-start;gap:.4rem;background:rgba(91,141,239,.06);border:1px solid rgba(91,141,239,.12);border-radius:9px;padding:.65rem .85rem;margin-bottom:1.2rem;font-size:.78rem;color:var(--t2);line-height:1.55}
+.login-hint code{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:.78rem}
+.login-error{display:none;align-items:center;gap:.45rem;background:rgba(245,95,95,.08);border:1px solid rgba(245,95,95,.2);border-radius:9px;padding:.65rem .9rem;margin-bottom:1rem;font-size:.82rem;color:var(--red)}
+.login-error.show{display:flex}
+.btn-login{width:100%;padding:.8rem;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:11px;font-family:var(--font);font-size:.95rem;font-weight:700;cursor:pointer;transition:.2s;margin-top:.25rem;box-shadow:0 4px 20px rgba(91,141,239,.3);display:flex;align-items:center;justify-content:center;gap:.5rem}
+.btn-login:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 28px rgba(91,141,239,.45)}
+.btn-login:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.login-footer{text-align:center;font-size:.82rem;color:var(--t3);margin-top:1rem}
+.login-footer a{color:var(--accent);font-weight:600;cursor:pointer}
+.login-footer a:hover{text-decoration:underline}
+.reg-back{display:flex;align-items:center;gap:.4rem;color:var(--t3);font-size:.82rem;cursor:pointer;background:none;border:none;font-family:var(--font);padding:0;margin-bottom:1.4rem;transition:.15s}
+.reg-back:hover{color:var(--t2)}
+.nav-user{display:flex;align-items:center;gap:.55rem;padding:.28rem .65rem .28rem .3rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:999px;cursor:pointer;transition:.15s}
+.nav-user:hover{background:rgba(255,255,255,.08)}
+.nav-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0}
+.nav-username{font-size:.8rem;font-weight:600;color:var(--t1)}
+.nav-role{font-size:.65rem;padding:.12rem .42rem;border-radius:999px;font-weight:700;letter-spacing:.04em;margin-left:.2rem}
+.role-member{background:rgba(46,216,160,.12);color:var(--green)}
+.role-admin{background:rgba(245,166,35,.12);color:var(--amber)}
+.role-employee{background:rgba(180,127,234,.12);color:var(--purple)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+
+/* ═══ PAYMENT MODAL ═══ */
+.payment-modal-box{
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:20px;padding:0;
+  max-width:420px;width:94%;
+  box-shadow:0 24px 64px rgba(0,0,0,.6);
+  overflow:hidden;
+  animation:fadein .25s ease;
+}
+.pay-header{
+  padding:1.4rem 1.6rem 1rem;
+  border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.pay-header h3{font-size:1rem;font-weight:700}
+.pay-steps{
+  display:flex;gap:0;
+  border-bottom:1px solid var(--border);
+  overflow:hidden;
+}
+.pay-step{
+  flex:1;padding:.6rem .5rem;text-align:center;
+  font-size:.72rem;font-weight:600;color:var(--t3);
+  position:relative;transition:.2s;
+}
+.pay-step.active{color:var(--accent);background:rgba(91,141,239,.06)}
+.pay-step.done{color:var(--green)}
+.pay-step-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--border);color:var(--t3);
+  font-size:.65rem;margin-right:.3rem;font-weight:700;
+}
+.pay-step.active .pay-step-num{background:var(--accent);color:#fff}
+.pay-step.done .pay-step-num{background:var(--green);color:#0a2018}
+.pay-body{padding:1.5rem 1.6rem}
+
+/* Method selector */
+.pay-method-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem}
+.pay-method-card{
+  border:2px solid var(--border);border-radius:14px;
+  padding:1.1rem .9rem;cursor:pointer;text-align:center;
+  transition:.2s;background:var(--s3);
+}
+.pay-method-card:hover{border-color:var(--border2);background:var(--s2)}
+.pay-method-card.selected{border-color:var(--accent);background:rgba(91,141,239,.07);box-shadow:0 0 0 1px rgba(91,141,239,.3)}
+.pay-method-logo{font-size:2.2rem;margin-bottom:.5rem}
+.pay-method-name{font-size:.82rem;font-weight:700;color:var(--t1)}
+.pay-method-sub{font-size:.72rem;color:var(--t3);margin-top:.15rem}
+
+/* Summary row */
+.pay-summary{
+  background:var(--s3);border:1px solid var(--border);
+  border-radius:12px;padding:.9rem 1rem;margin-bottom:1.1rem;
+}
+.pay-sum-row{display:flex;justify-content:space-between;font-size:.83rem;color:var(--t3);margin-bottom:.3rem}
+.pay-sum-row:last-child{margin-bottom:0}
+.pay-sum-row.total strong{font-size:1.1rem;color:var(--amber)}
+
+/* Promptpay QR */
+.promptpay-wrap{text-align:center;margin-bottom:1rem}
+.pp-qr-box{
+  background:#fff;border-radius:14px;
+  padding:14px;display:inline-flex;
+  flex-direction:column;align-items:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.3);
+}
+.pp-logo-bar{
+  display:flex;align-items:center;gap:.5rem;
+  margin-bottom:.65rem;padding-bottom:.6rem;
+  border-bottom:2px solid #003580;width:100%;
+}
+.pp-logo-txt{font-size:.75rem;font-weight:800;color:#003580;letter-spacing:.02em}
+.pp-amount-label{font-size:.72rem;color:#555;margin-top:.6rem}
+.pp-amount-val{font-size:1.1rem;font-weight:800;color:#003580}
+
+/* TrueMoney */
+.truemoney-wrap{margin-bottom:1rem}
+.tm-card{
+  background:linear-gradient(135deg,#f97316,#ef4444);
+  border-radius:16px;padding:1.5rem;color:#fff;
+  margin-bottom:.9rem;position:relative;overflow:hidden;
+}
+.tm-card::before{
+  content:'';position:absolute;top:-30px;right:-30px;
+  width:120px;height:120px;border-radius:50%;
+  background:rgba(255,255,255,.08);
+}
+.tm-logo{font-size:1.8rem;margin-bottom:.4rem}
+.tm-card-title{font-size:.82rem;opacity:.85;margin-bottom:.25rem}
+.tm-phone{font-size:1.3rem;font-weight:800;letter-spacing:.05em;font-family:'JetBrains Mono',monospace}
+.tm-name{font-size:.8rem;opacity:.75;margin-top:.3rem}
+.tm-input-wrap label{font-size:.78rem;color:var(--t3);margin-bottom:.35rem;display:block}
+.tm-input{
+  width:100%;padding:.7rem 1rem;
+  background:var(--s3);border:1px solid var(--border);
+  border-radius:10px;color:var(--t1);font-size:.9rem;
+  font-family:'JetBrains Mono',monospace;
+  letter-spacing:.08em;transition:.18s;
+}
+.tm-input:focus{outline:none;border-color:rgba(249,115,22,.5)}
+
+/* Processing spinner */
+.pay-processing{text-align:center;padding:1.5rem 0}
+.pay-proc-spinner{
+  width:56px;height:56px;
+  border:4px solid var(--border2);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+  margin:0 auto 1rem;
+}
+.pay-proc-title{font-size:1rem;font-weight:700;margin-bottom:.3rem}
+.pay-proc-sub{font-size:.82rem;color:var(--t3)}
+
+/* Success */
+.pay-success{text-align:center;padding:1.5rem 0}
+.pay-success-icon{font-size:3.5rem;margin-bottom:.75rem;animation:pop .4s ease}
+.pay-success-title{font-size:1.15rem;font-weight:800;color:var(--green);margin-bottom:.3rem}
+.pay-success-sub{font-size:.83rem;color:var(--t3)}
+.pay-success-amount{font-size:1.8rem;font-weight:800;color:var(--green);margin:.6rem 0 .3rem;font-family:'JetBrains Mono',monospace}
+.pay-footer{padding:1rem 1.6rem 1.4rem;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-bg">
+    <div class="login-bg-orb login-bg-orb1"></div>
+    <div class="login-bg-orb login-bg-orb2"></div>
+    <div class="login-bg-orb login-bg-orb3"></div>
+  </div>
+  <div class="login-wrap">
+    <div class="login-logo">
+      <div class="login-logo-icon">🫧</div>
+      <div class="login-logo-title">LaundryPro</div>
+      <div class="login-logo-sub">ระบบจัดการเครื่องซักผ้าออนไลน์</div>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div class="login-card" id="login-form-card">
+      <div class="role-tabs">
+        <button class="role-tab active" id="tab-member" onclick="switchRole('member')">👤 สมาชิก</button>
+        <button class="role-tab" id="tab-employee" onclick="switchRole('employee')">🔧 พนักงาน</button>
+        <button class="role-tab" id="tab-admin" onclick="switchRole('admin')">👑 Admin</button>
+      </div>
+      <div class="login-hint" id="login-hint-box">
+        💡 <span id="login-hint-text">ทดสอบ: <code>member01</code> / <code>1234</code></span>
+      </div>
+      <div class="login-error" id="login-error">❌ <span id="login-error-text">Username หรือ Password ไม่ถูกต้อง</span></div>
+      <div class="login-field">
+        <label class="login-label">Username</label>
+        <input class="login-input" id="login-username" type="text" placeholder="กรอก Username" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Password</label>
+        <input class="login-input" id="login-password" type="password" placeholder="กรอก Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn-login" id="btn-login" onclick="doLogin()">
+        <span id="login-btn-text">เข้าสู่ระบบ</span>
+      </button>
+      <div class="login-footer">ยังไม่มีบัญชี? <a onclick="showRegister()">สมัครสมาชิก</a></div>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div class="login-card" id="register-form-card" style="display:none">
+      <button class="reg-back" onclick="showLogin()">← กลับไปเข้าสู่ระบบ</button>
+      <div style="font-size:1.1rem;font-weight:800;margin-bottom:1.25rem;letter-spacing:-.02em">สมัครสมาชิกใหม่</div>
+      <div class="login-error" id="reg-error">❌ <span id="reg-error-text">กรุณากรอกข้อมูลให้ครบ</span></div>
+      <div class="login-field">
+        <label class="login-label">ชื่อ-นามสกุล</label>
+        <input class="login-input" id="reg-name" type="text" placeholder="ชื่อ นามสกุล">
+      </div>
+      <div class="login-field">
+        <label class="login-label" style="display:flex;align-items:center;gap:.4rem">
+          เบอร์โทรศัพท์
+          <span style="color:var(--t3);font-size:.7rem;font-weight:400;text-transform:none;letter-spacing:0">(ระบบไทย +66)</span>
+        </label>
+        <div style="display:flex;gap:.5rem;align-items:stretch">
+          <div style="padding:.7rem .85rem;background:var(--s3);border:1px solid var(--border);border-radius:10px;font-size:.88rem;color:var(--t2);white-space:nowrap;display:flex;align-items:center;gap:.3rem;flex-shrink:0">
+            🇹🇭 <span style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:600">+66</span>
+          </div>
+          <input class="login-input" id="reg-phone" type="tel" placeholder="8X-XXXX-XXXX (ไม่ต้องใส่ 0 นำหน้า)" maxlength="9" oninput="formatPhoneInput(this)" style="flex:1">
+        </div>
+        <div style="font-size:.72rem;color:var(--t3);margin-top:.3rem">
+          ⓘ กรอก <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">812345678</code> (9 ตัว) สำหรับเบอร์ <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">081-234-5678</code>
+        </div>
+      </div>
+      <div class="login-field">
+        <label class="login-label">Username</label>
+        <input class="login-input" id="reg-username" type="text" placeholder="ตั้ง Username">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Password</label>
+        <input class="login-input" id="reg-password" type="password" placeholder="ตั้ง Password (อย่างน้อย 4 ตัว)">
+      </div>
+      <button class="btn-login" onclick="doRegister()">สมัครสมาชิก</button>
+      <div class="login-footer">มีบัญชีแล้ว? <a onclick="showLogin()">เข้าสู่ระบบ</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav id="main-nav" style="display:none">
+  <div class="brand"><div class="brand-dot"></div>LaundryPro</div>
+  <div class="nav-links" id="nav-links-member">
+    <button onclick="show('home')" id="nav-home" class="active">หน้าแรก</button>
+    <button onclick="show('machines')" id="nav-machines">เครื่องซักผ้า</button>
+    <button onclick="show('mybookings')" id="nav-mybookings">การจองของฉัน</button>
+    <button onclick="show('booking')" id="nav-booking">จองเครื่อง</button>
+    <button onclick="show('wallet')" id="nav-wallet">กระเป๋าเงิน</button>
+    <button onclick="show('transactions')" id="nav-transactions">ประวัติ</button>
+    <button onclick="show('vending')" id="nav-vending">ตู้สินค้า</button>
+    <button onclick="show('admin')" id="nav-admin" style="display:none">Admin</button>
+  </div>
+  <div class="nav-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div class="wallet-chip" onclick="show('wallet')" id="nav-balance" style="display:none">💳 500.00 ฿</div>
+    <div class="nav-user" onclick="doLogout()">
+      <div class="nav-avatar" id="nav-avatar">S</div>
+      <div>
+        <div class="nav-username" id="nav-username">—</div>
+      </div>
+      <span class="nav-role" id="nav-role-badge"></span>
+      <span style="font-size:.75rem;color:var(--t3);margin-left:.1rem">⏏</span>
+    </div>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div class="toast-area" id="toastArea"></div>
+
+<!-- CANCEL CONFIRM MODAL -->
+<div class="modal-ov" id="cancelModal">
+  <div class="modal-box">
+    <div class="modal-icon">⚠️</div>
+    <div class="modal-title">ยืนยันการยกเลิกการจอง</div>
+    <div class="modal-sub">หลังจากยกเลิก เงินจะถูกคืนเข้ากระเป๋าของคุณทันที<br>และสถานะเครื่องจะเปลี่ยนกลับเป็น "ว่าง"</div>
+    <div class="modal-detail" id="cancel-modal-detail"></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeCancelModal()">ไม่ยกเลิก</button>
+      <button class="btn btn-danger" id="btn-confirm-cancel" onclick="doCancel()">ยืนยันยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR MODAL -->
+<!-- CHECK-IN CONFIRM MODAL (shown after scanning QR) -->
+<div class="modal-ov" id="scanCheckinModal">
+  <div class="modal-box" style="max-width:360px" onclick="event.stopPropagation()">
+    <div style="text-align:center;margin-bottom:1.1rem">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">📱</div>
+      <div style="font-weight:800;font-size:1.1rem" id="scan-machine-name">เครื่อง #1</div>
+      <div style="font-size:.82rem;color:var(--t3);margin-top:.2rem" id="scan-machine-info"></div>
+    </div>
+    <div id="scan-booking-detail" style="background:var(--s3);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem;font-size:.83rem"></div>
+    <div id="scan-timer-box" style="background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:10px;padding:.75rem 1rem;margin-bottom:1.1rem;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:.78rem;color:var(--t3)">⏰ เวลา Check-in ที่เหลือ</span>
+      <span id="scan-countdown" style="font-family:'JetBrains Mono',monospace;font-size:1.25rem;font-weight:800;color:var(--amber)">--:--</span>
+    </div>
+    <div id="scan-error-box" style="display:none;background:rgba(245,95,95,.08);border:1px solid rgba(245,95,95,.2);border-radius:9px;padding:.65rem .9rem;margin-bottom:1rem;font-size:.82rem;color:var(--red)"></div>
+    <div id="scan-success-box" style="display:none;background:rgba(46,216,160,.08);border:1px solid rgba(46,216,160,.2);border-radius:9px;padding:.85rem;margin-bottom:.9rem;text-align:center">
+      <div style="font-size:1.75rem;margin-bottom:.3rem">✅</div>
+      <div style="font-weight:700;color:var(--green)">Check-in สำเร็จ!</div>
+      <div style="font-size:.8rem;color:var(--t3);margin-top:.2rem">เครื่องเริ่มทำงานแล้ว</div>
+    </div>
+    <div style="display:flex;gap:.65rem" id="scan-btn-row">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeScanModal()">ปิด</button>
+      <button class="btn btn-green" style="flex:2;font-weight:700" id="scan-confirm-btn" onclick="scanDoCheckin()">✅ ยืนยัน Check-in</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR SCANNER MODAL -->
+<div class="modal-ov" id="qrScannerModal">
+  <div class="modal-box" style="max-width:380px;padding:1.5rem" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-weight:700;font-size:.95rem">📷 สแกน QR Check-in</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeQRScanner()">✕</button>
+    </div>
+    <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;margin-bottom:.9rem;aspect-ratio:1">
+      <video id="scanner-video" style="width:100%;height:100%;object-fit:cover" playsinline muted></video>
+      <!-- Scan guide overlay -->
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+        <div style="width:65%;aspect-ratio:1;border:3px solid rgba(46,216,160,.7);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)"></div>
+      </div>
+      <!-- Corner markers -->
+      <div style="position:absolute;top:17.5%;left:17.5%;width:12%;aspect-ratio:1;border-top:3px solid var(--green);border-left:3px solid var(--green);border-radius:3px 0 0 0"></div>
+      <div style="position:absolute;top:17.5%;right:17.5%;width:12%;aspect-ratio:1;border-top:3px solid var(--green);border-right:3px solid var(--green);border-radius:0 3px 0 0"></div>
+      <div style="position:absolute;bottom:17.5%;left:17.5%;width:12%;aspect-ratio:1;border-bottom:3px solid var(--green);border-left:3px solid var(--green);border-radius:0 0 0 3px"></div>
+      <div style="position:absolute;bottom:17.5%;right:17.5%;width:12%;aspect-ratio:1;border-bottom:3px solid var(--green);border-right:3px solid var(--green);border-radius:0 0 3px 0"></div>
+    </div>
+    <div id="scanner-status" style="font-size:.82rem;color:var(--t2);text-align:center;margin-bottom:.75rem;min-height:1.5rem">กำลังเปิดกล้อง...</div>
+    <div id="scanner-error" style="display:none;font-size:.78rem;color:var(--red);background:rgba(245,95,95,.08);border:1px solid rgba(245,95,95,.2);border-radius:8px;padding:.5rem .8rem;margin-bottom:.75rem"></div>
+    <button class="btn btn-ghost btn-full" onclick="closeQRScanner()">ยกเลิก</button>
+  </div>
+</div>
+
+<!-- QR MODAL (show QR code for machine) -->
+<div class="modal-ov" id="qrModal">
+  <div class="qr-modal-box" onclick="event.stopPropagation()" style="max-width:320px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-weight:700;font-size:.95rem" id="qr-modal-title">สแกน QR เพื่อ Check-in</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeQR()">✕</button>
+    </div>
+    <div style="font-size:.78rem;color:var(--t2);margin-bottom:.9rem;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.15);border-radius:8px;padding:.65rem .9rem;line-height:1.6">
+      📱 <strong>วิธี Check-in:</strong> ให้เจ้าของการจองเปิดหน้านี้ แล้วกด <strong>"สแกน QR"</strong> เพื่อสแกน QR code นี้ด้วยกล้องมือถือ — ระบบจะยืนยัน Check-in ให้อัตโนมัติ
+    </div>
+    <div id="qr-canvas-wrap" style="display:flex;justify-content:center;align-items:center;background:#fff;border-radius:12px;padding:14px;margin:0 auto .9rem;width:fit-content"></div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--t3);margin-bottom:.3rem;text-align:center" id="qrCodeText"></div>
+    <div style="font-size:.75rem;color:var(--t3);text-align:center;margin-bottom:.9rem" id="qr-booking-id-text"></div>
+    <button class="btn btn-ghost btn-full" onclick="closeQR()">ปิด</button>
+  </div>
+</div>
+
+<!-- ════════════════════ PAGE: HOME ════════════════════ -->
+<div class="page active" id="page-home">
+  <div class="page-hdr">
+    <div class="page-title" id="home-greeting">สวัสดี 👋</div>
+    <div class="page-sub">ระบบจัดการเครื่องซักผ้าออนไลน์ อัปเดตแบบ Real-time</div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-card c1" onclick="show('machines')">
+      <div class="stat-icon">🟢</div>
+      <div><div class="stat-val" id="h-avail">—</div><div class="stat-label">เครื่องว่างพร้อมใช้</div></div>
+    </div>
+    <div class="stat-card c2" onclick="show('mybookings')">
+      <div class="stat-icon">🔵</div>
+      <div><div class="stat-val" id="h-running">—</div><div class="stat-label">กำลังซักอยู่</div></div>
+    </div>
+    <div class="stat-card c3" onclick="show('wallet')">
+      <div class="stat-icon">💳</div>
+      <div><div class="stat-val" id="h-balance">—</div><div class="stat-label">ยอดเงินคงเหลือ (฿)</div></div>
+    </div>
+    <div class="stat-card c4" onclick="show('mybookings')">
+      <div class="stat-icon">📋</div>
+      <div><div class="stat-val" id="h-active-bookings">—</div><div class="stat-label">การจองที่กำลังใช้งาน</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:.83rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1rem">รายการล่าสุด</div>
+    <div id="h-recent"></div>
+  </div>
+</div>
+
+<!-- ════════════════════ PAGE: MACHINES ════════════════════ -->
+<div class="page" id="page-machines">
+  <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.75rem">
+    <div>
+      <div class="page-title">สถานะเครื่องซักผ้า</div>
+      <div class="page-sub">อัปเดต Real-time ทุก 5 วินาที</div>
+    </div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE UPDATE</div>
+  </div>
+  <div class="status-row" id="status-chips"></div>
+  <div class="machines-grid" id="machines-grid"></div>
+</div>
+
+<!-- ════════════════════ PAGE: MY BOOKINGS ════════════════════ -->
+<div class="page" id="page-mybookings">
+  <div class="page-hdr">
+    <div class="page-title">การจองของฉัน</div>
+    <div class="page-sub">ดูและจัดการการจองที่กำลังดำเนินอยู่ — สามารถยกเลิกและรับเงินคืนได้</div>
+  </div>
+  <div id="mybookings-active"></div>
+  <div style="margin-top:2rem">
+    <div style="font-size:.8rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.9rem;padding-bottom:.7rem;border-bottom:1px solid var(--border)">ประวัติการจอง</div>
+    <div id="mybookings-history"></div>
+  </div>
+</div>
+
+<!-- ════════════════════ PAGE: BOOKING ════════════════════ -->
+<div class="page" id="page-booking">
+  <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+    <div>
+      <div class="page-title">จองเครื่องซักผ้า</div>
+      <div class="page-sub">เลือกเครื่องที่ต้องการ — ระบบตัดเงินอัตโนมัติ</div>
+    </div>
+    <div class="wallet-chip">💳 <span id="bk-balance">500.00</span> ฿</div>
+  </div>
+  <div class="booking-layout">
+    <div>
+      <div class="section-label">เครื่องที่ว่างพร้อมใช้งาน</div>
+      <div class="mini-grid" id="book-machines"></div>
+    </div>
+    <div>
+      <div class="sum-card" id="sum-card" style="display:none"></div>
+      <div id="sum-placeholder" style="background:var(--s2);border:2px dashed var(--border);border-radius:14px;padding:2.5rem;text-align:center;color:var(--t3)">
+        <div style="font-size:2.5rem;margin-bottom:.5rem">👆</div>
+        <div style="font-size:.85rem">เลือกเครื่องซักผ้าก่อน</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ PAGE: WALLET ════════════════════ -->
+<div class="page" id="page-wallet">
+  <div class="page-hdr"><div class="page-title">กระเป๋าเงิน</div></div>
+  <div class="wallet-hero">
+    <div class="wh">
+      <div class="wh-label">ยอดเงินคงเหลือ</div>
+      <div class="wh-bal" id="w-bal">500.00</div>
+      <div class="wh-cur">บาท (THB)</div>
+      <div class="wh-user" id="wallet-username">👤 —</div>
+    </div>
+  </div>
+  <div class="topup-area">
+    <div class="section-label">เลือกจำนวนเงินที่ต้องการเติม</div>
+    <div class="amts">
+      <button class="amt-btn" onclick="setAmt(50)">50 ฿</button>
+      <button class="amt-btn" onclick="setAmt(100)">100 ฿</button>
+      <button class="amt-btn" onclick="setAmt(200)">200 ฿</button>
+      <button class="amt-btn" onclick="setAmt(500)">500 ฿</button>
+      <button class="amt-btn" onclick="setAmt(1000)">1,000 ฿</button>
+    </div>
+    <label class="fi-label">หรือกรอกจำนวนเอง</label>
+    <input type="number" class="fi-input" id="topup-input" placeholder="จำนวนเงิน (20 – 10,000 ฿)" min="20" max="10000" oninput="clearAmtBtns()">
+
+    <!-- Payment method chooser -->
+    <div class="section-label" style="margin-top:1.1rem">ช่องทางชำระเงิน</div>
+    <div class="pay-method-grid" id="wallet-method-grid">
+      <div class="pay-method-card selected" id="pm-promptpay" onclick="selectPayMethod('promptpay')">
+        <div class="pay-method-logo">🏦</div>
+        <div class="pay-method-name">PromptPay</div>
+        <div class="pay-method-sub">พร้อมเพย์ / QR Code</div>
+      </div>
+      <div class="pay-method-card" id="pm-truemoney" onclick="selectPayMethod('truemoney')">
+        <div class="pay-method-logo">🟠</div>
+        <div class="pay-method-name">TrueMoney</div>
+        <div class="pay-method-sub">True Wallet</div>
+      </div>
+    </div>
+
+    <button class="btn btn-green btn-full" style="padding:.8rem;font-size:.95rem" onclick="openPaymentModal()">
+      💳 ดำเนินการชำระเงิน
+    </button>
+  </div>
+</div>
+
+<!-- ════ PAYMENT MODAL ════ -->
+<div class="modal-ov" id="paymentModal">
+  <div class="payment-modal-box" onclick="event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="pay-header">
+      <h3 id="pay-modal-title">ชำระเงิน</h3>
+      <button class="btn btn-ghost btn-sm" id="pay-close-btn" onclick="closePaymentModal()">✕</button>
+    </div>
+
+    <!-- Steps -->
+    <div class="pay-steps" id="pay-steps">
+      <div class="pay-step active" id="pstep-1"><span class="pay-step-num">1</span>ยืนยัน</div>
+      <div class="pay-step" id="pstep-2"><span class="pay-step-num">2</span>ชำระ</div>
+      <div class="pay-step" id="pstep-3"><span class="pay-step-num">3</span>สำเร็จ</div>
+    </div>
+
+    <!-- Body (swapped by JS) -->
+    <div class="pay-body" id="pay-body"></div>
+
+    <!-- Footer -->
+    <div class="pay-footer" id="pay-footer"></div>
+  </div>
+</div>
+
+<!-- ════════════════════ PAGE: TRANSACTIONS ════════════════════ -->
+<div class="page" id="page-transactions">
+  <div class="page-hdr"><div class="page-title">ประวัติการทำรายการ</div></div>
+  <div class="filter-tabs">
+    <button class="tab-btn active" onclick="filterTx('all',this)">ทั้งหมด</button>
+    <button class="tab-btn" onclick="filterTx('payment',this)">ชำระเงิน</button>
+    <button class="tab-btn" onclick="filterTx('topup',this)">เติมเงิน</button>
+    <button class="tab-btn" onclick="filterTx('refund',this)">คืนเงิน</button>
+  </div>
+  <div class="trans-list" id="tx-list"></div>
+</div>
+
+<!-- ════════════════════ PAGE: VENDING ════════════════════ -->
+<div class="page" id="page-vending">
+  <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+    <div><div class="page-title">ตู้จำหน่ายสินค้า</div></div>
+    <div class="wallet-chip">💳 <span id="vend-balance">500.00</span> ฿</div>
+  </div>
+  <div class="products-grid" id="products-grid"></div>
+</div>
+
+<!-- ════════════════════ PAGE: ADMIN ════════════════════ -->
+<div class="page" id="page-admin">
+  <div class="admin-layout">
+    <div class="adm-side">
+      <div class="adm-sb-title">Admin Panel</div>
+      <div class="adm-sb-nav">
+        <button class="sb-item active" id="sb-dashboard" onclick="switchAdminTab('dashboard')">📊 แดชบอร์ด</button>
+        <button class="sb-item" id="sb-machines" onclick="switchAdminTab('machines')">🌀 สถานะเครื่อง</button>
+        <button class="sb-item" id="sb-report" onclick="switchAdminTab('report')">📈 รายงาน</button>
+        <button class="sb-item" id="sb-members" onclick="switchAdminTab('members')">👥 สมาชิก</button>
+        <button class="sb-item" id="sb-settings" onclick="switchAdminTab('settings')">⚙️ ตั้งค่า</button>
+      </div>
+    </div>
+    <div class="adm-content">
+
+      <!-- TAB: DASHBOARD -->
+      <div id="adm-tab-dashboard">
+        <div class="adm-head">
+          <h2>แดชบอร์ดผู้ดูแลระบบ</h2>
+          <div class="adm-date" id="adm-date"></div>
+        </div>
+        <div class="adm-stat-grid">
+          <div class="adm-stat" style="border-bottom:2px solid var(--amber)"><div class="adm-stat-icon">💰</div><div><div class="adm-stat-val" id="adm-income">1,240</div><div class="adm-stat-label">รายได้วันนี้ (฿)</div></div></div>
+          <div class="adm-stat" style="border-bottom:2px solid var(--accent)"><div class="adm-stat-icon">📋</div><div><div class="adm-stat-val">31</div><div class="adm-stat-label">การจองวันนี้</div></div></div>
+          <div class="adm-stat" style="border-bottom:2px solid var(--green)"><div class="adm-stat-icon">👥</div><div><div class="adm-stat-val">42</div><div class="adm-stat-label">สมาชิกทั้งหมด</div></div></div>
+          <div class="adm-stat" style="border-bottom:2px solid var(--purple)"><div class="adm-stat-icon">🌀</div><div><div class="adm-stat-val"><span id="adm-av">—</span>/<span id="adm-run">—</span></div><div class="adm-stat-label">ว่าง / กำลังซัก</div></div></div>
+        </div>
+        <div class="charts-row">
+          <div class="chart-card">
+            <div class="chart-title">รายได้และการจอง 7 วันที่ผ่านมา</div>
+            <div class="chart-wrap"><canvas id="incomeChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">สถานะเครื่องซักผ้าทั้งหมด</div>
+            <div class="ms-list" id="ms-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: MACHINES -->
+      <div id="adm-tab-machines" style="display:none">
+        <div class="adm-head">
+          <h2>สถานะเครื่องซักผ้า</h2>
+          <div class="adm-date" id="adm-mach-date"></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.85rem" id="adm-machines-table">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">เครื่อง</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">ประเภท</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">ความจุ</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">ราคา</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">สถานะ</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">การดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody id="adm-machines-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: REPORT -->
+      <div id="adm-tab-report" style="display:none">
+        <div class="adm-head">
+          <h2>รายงานรายได้</h2>
+          <div class="adm-date" id="adm-rep-date"></div>
+        </div>
+        <div class="adm-stat-grid" style="margin-bottom:1.5rem">
+          <div class="adm-stat" style="border-bottom:2px solid var(--green)"><div class="adm-stat-icon">💰</div><div><div class="adm-stat-val">8,640</div><div class="adm-stat-label">รายได้สัปดาห์นี้ (฿)</div></div></div>
+          <div class="adm-stat" style="border-bottom:2px solid var(--accent)"><div class="adm-stat-icon">📋</div><div><div class="adm-stat-val">186</div><div class="adm-stat-label">การจองสัปดาห์นี้</div></div></div>
+          <div class="adm-stat" style="border-bottom:2px solid var(--amber)"><div class="adm-stat-icon">📊</div><div><div class="adm-stat-val">46.50</div><div class="adm-stat-label">รายได้เฉลี่ย/การจอง (฿)</div></div></div>
+          <div class="adm-stat" style="border-bottom:2px solid var(--purple)"><div class="adm-stat-icon">🏆</div><div><div class="adm-stat-val">เครื่อง #6</div><div class="adm-stat-label">เครื่องที่ใช้งานมากสุด</div></div></div>
+        </div>
+        <div class="chart-card" style="margin-bottom:1.2rem">
+          <div class="chart-title">รายได้รายวัน 30 วันล่าสุด</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="reportChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">รายได้แยกตามประเภทเครื่อง</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;margin-top:.5rem" id="machine-income-bars"></div>
+        </div>
+      </div>
+
+      <!-- TAB: MEMBERS -->
+      <div id="adm-tab-members" style="display:none">
+        <div class="adm-head">
+          <h2>จัดการสมาชิก</h2>
+          <div style="display:flex;gap:.65rem;align-items:center">
+            <input id="member-search" type="text" class="fi-input" style="width:200px;padding:.38rem .85rem;font-size:.82rem" placeholder="🔍 ค้นหาสมาชิก..." oninput="filterMembers()">
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">#</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">ชื่อ</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Username</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">เบอร์โทร</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">ยอดเงิน (฿)</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">จองทั้งหมด</th>
+                <th style="padding:.75rem 1rem;text-align:left;color:var(--t3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody id="members-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: SETTINGS -->
+      <div id="adm-tab-settings" style="display:none">
+        <div class="adm-head"><h2>ตั้งค่าระบบ</h2></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;max-width:820px">
+
+          <div class="chart-card">
+            <div class="chart-title" style="margin-bottom:1.1rem;font-size:.9rem;color:var(--t1);font-weight:700">💳 ค่าบริการเครื่องซักผ้า</div>
+            <div id="settings-machines"></div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title" style="margin-bottom:1.1rem;font-size:.9rem;color:var(--t1);font-weight:700">🔔 การแจ้งเตือน</div>
+            <div style="display:flex;flex-direction:column;gap:.85rem">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:.65rem .9rem;background:var(--s3);border-radius:9px">
+                <div><div style="font-size:.85rem;font-weight:600">แจ้งเตือนซักเสร็จ</div><div style="font-size:.75rem;color:var(--t3)">ส่ง Notification เมื่อซักเสร็จ</div></div>
+                <label class="toggle"><input type="checkbox" checked onchange="toast('บันทึกการตั้งค่าแล้ว','s')"><span class="tog-sl"></span></label>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:.65rem .9rem;background:var(--s3);border-radius:9px">
+                <div><div style="font-size:.85rem;font-weight:600">แจ้งเตือนเหรียญใกล้หมด</div><div style="font-size:.75rem;color:var(--t3)">เมื่อเหรียญเหลือน้อยกว่า 50 เหรียญ</div></div>
+                <label class="toggle"><input type="checkbox" checked onchange="toast('บันทึกการตั้งค่าแล้ว','s')"><span class="tog-sl"></span></label>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:.65rem .9rem;background:var(--s3);border-radius:9px">
+                <div><div style="font-size:.85rem;font-weight:600">แจ้งเตือนสินค้าหมด</div><div style="font-size:.75rem;color:var(--t3)">เมื่อสต็อกสินค้าเป็นศูนย์</div></div>
+                <label class="toggle"><input type="checkbox" onchange="toast('บันทึกการตั้งค่าแล้ว','s')"><span class="tog-sl"></span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title" style="margin-bottom:1.1rem;font-size:.9rem;color:var(--t1);font-weight:700">⏱ ตั้งค่าระบบ</div>
+            <div style="display:flex;flex-direction:column;gap:.85rem">
+              <div>
+                <label class="fi-label">JWT Secret หมดอายุ (ชั่วโมง)</label>
+                <input type="number" class="fi-input" value="24" style="font-size:.85rem;padding:.5rem .85rem">
+              </div>
+              <div>
+                <label class="fi-label">Auto-Timer ตรวจสอบทุก (วินาที)</label>
+                <input type="number" class="fi-input" value="60" style="font-size:.85rem;padding:.5rem .85rem">
+              </div>
+              <div>
+                <label class="fi-label">ยอดเงินสูงสุดต่อการเติมครั้งเดียว (฿)</label>
+                <input type="number" class="fi-input" value="10000" style="font-size:.85rem;padding:.5rem .85rem">
+              </div>
+              <button class="btn btn-primary" onclick="toast('บันทึกการตั้งค่าระบบแล้ว','s')">💾 บันทึกการตั้งค่า</button>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title" style="margin-bottom:1.1rem;font-size:.9rem;color:var(--t1);font-weight:700">🗄 ฐานข้อมูล</div>
+            <div style="display:flex;flex-direction:column;gap:.75rem">
+              <div style="padding:.7rem .9rem;background:var(--s3);border-radius:9px;font-size:.82rem">
+                <div style="color:var(--t3);font-size:.75rem;margin-bottom:.2rem">Host</div>
+                <div style="font-family:'JetBrains Mono',monospace;color:var(--green)">localhost:3306</div>
+              </div>
+              <div style="padding:.7rem .9rem;background:var(--s3);border-radius:9px;font-size:.82rem">
+                <div style="color:var(--t3);font-size:.75rem;margin-bottom:.2rem">Database</div>
+                <div style="font-family:'JetBrains Mono',monospace;color:var(--accent)">laundry_db</div>
+              </div>
+              <div style="padding:.7rem .9rem;background:rgba(46,216,160,.06);border:1px solid rgba(46,216,160,.15);border-radius:9px;font-size:.82rem;display:flex;align-items:center;gap:.5rem">
+                <div style="width:8px;height:8px;background:var(--green);border-radius:50%"></div>
+                <span style="color:var(--green)">เชื่อมต่อสำเร็จ</span>
+              </div>
+              <button class="btn btn-ghost" onclick="toast('ทดสอบการเชื่อมต่อสำเร็จ ✓','s')">🔗 ทดสอบการเชื่อมต่อ</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+/* Toggle switch */
+.toggle{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.tog-sl{position:absolute;cursor:pointer;inset:0;background:var(--border2);border-radius:999px;transition:.25s}
+.tog-sl::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s}
+.toggle input:checked + .tog-sl{background:var(--accent)}
+.toggle input:checked + .tog-sl::before{transform:translateX(18px)}
+/* Editable price row */
+.price-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem .9rem;background:var(--s3);border-radius:9px;margin-bottom:.55rem}
+.price-row-label{font-size:.83rem;color:var(--t2)}
+.price-edit{width:75px;padding:.3rem .55rem;background:rgba(91,141,239,.08);border:1px solid rgba(91,141,239,.2);border-radius:7px;color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:.85rem;text-align:center}
+.price-edit:focus{outline:none;border-color:var(--accent)}
+/* Table rows */
+.adm-tr{border-bottom:1px solid var(--border);transition:.15s}
+.adm-tr:hover{background:rgba(255,255,255,.025)}
+.adm-td{padding:.75rem 1rem;color:var(--t2);font-size:.84rem;vertical-align:middle}
+.adm-td-main{color:var(--t1);font-weight:600}
+</style>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════
+let balance = 500;
+let selectedMachineId = null;
+let cancelTargetId = null;
+let bookingIdCounter = 100;
+
+const machines = [
+  {id:1,type:'Front Load',cap:7,price:40,status:'available',dur:45,qr:'QR-MACHINE-001'},
+  {id:2,type:'Front Load',cap:8,price:45,status:'running',dur:45,qr:'QR-MACHINE-002',startAt:Date.now()-25*60000,endAt:Date.now()+20*60000},
+  {id:3,type:'Top Load',cap:10,price:35,status:'available',dur:40,qr:'QR-MACHINE-003'},
+  {id:4,type:'Top Load',cap:10,price:35,status:'maintenance',dur:40,qr:'QR-MACHINE-004'},
+  {id:5,type:'Front Load',cap:12,price:55,status:'available',dur:60,qr:'QR-MACHINE-005'},
+  {id:6,type:'Commercial',cap:20,price:80,status:'running',dur:90,qr:'QR-MACHINE-006',startAt:Date.now()-60*60000,endAt:Date.now()+30*60000},
+];
+
+// Active bookings (running machines that the user booked)
+const activeBookings = [
+  {bookingId:98,machineId:2,machineName:'เครื่อง #2',machineType:'Front Load',cap:8,price:45,bookedAt:Date.now()-25*60000,endAt:Date.now()+20*60000,status:'running'},
+  {bookingId:99,machineId:6,machineName:'เครื่อง #6',machineType:'Commercial',cap:20,price:80,bookedAt:Date.now()-60*60000,endAt:Date.now()+30*60000,status:'running'},
+];
+
+const bookingHistory = [
+  {bookingId:95,machineName:'เครื่อง #3',machineType:'Top Load',price:35,bookedAt:'2024-01-14 18:20',status:'finished'},
+  {bookingId:94,machineName:'เครื่อง #1',machineType:'Front Load',price:40,bookedAt:'2024-01-14 09:00',status:'cancelled',refunded:true},
+  {bookingId:93,machineName:'เครื่อง #5',machineType:'Front Load',price:55,bookedAt:'2024-01-13 14:30',status:'finished'},
+];
+
+const transactions = [
+  {id:15,type:'payment',time:'2024-01-15 10:30',amount:45,note:'ชำระค่าซักผ้า เครื่อง #2'},
+  {id:14,type:'payment',time:'2024-01-15 09:00',amount:80,note:'ชำระค่าซักผ้า เครื่อง #6'},
+  {id:13,type:'topup',time:'2024-01-14 20:00',amount:200,note:'เติมเงินกระเป๋า'},
+  {id:12,type:'payment',time:'2024-01-14 18:20',amount:35,note:'ชำระค่าซักผ้า เครื่อง #3'},
+  {id:11,type:'refund',time:'2024-01-14 09:05',amount:40,note:'คืนเงิน — ยกเลิกการจอง เครื่อง #1'},
+  {id:10,type:'topup',time:'2024-01-13 08:30',amount:300,note:'เติมเงินกระเป๋า'},
+];
+
+const products = [
+  {id:1,name:'ผงซักฟอก (30g)',price:10,stock:50,ico:'🧴'},
+  {id:2,name:'น้ำยาปรับผ้านุ่ม',price:15,stock:30,ico:'🫙'},
+  {id:3,name:'ถุงซักผ้า ใหญ่',price:25,stock:20,ico:'🛍'},
+  {id:4,name:'ถุงซักผ้า เล็ก',price:15,stock:20,ico:'🛍'},
+  {id:5,name:'น้ำยาขจัดคราบ',price:20,stock:0,ico:'🧪'},
+];
+
+const statusLabel = {available:'ว่าง',running:'กำลังซัก',finished:'เสร็จแล้ว',maintenance:'ซ่อมบำรุง',booked:'จองแล้ว'};
+
+// ════════════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════════════
+function show(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-links button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const btn = document.getElementById('nav-'+page);
+  if(btn) btn.classList.add('active');
+  const renders = {home:renderHome,machines:renderMachines,mybookings:renderMyBookings,booking:renderBooking,transactions:()=>renderTx('all'),vending:renderVending,admin:renderAdmin};
+  if(renders[page]) renders[page]();
+}
+
+// ════════════════════════════════════════════════════════════
+// HOME
+// ════════════════════════════════════════════════════════════
+function renderHome() {
+  updateBalanceUI();
+  // Update greeting with real user name
+  const greetEl = document.getElementById('home-greeting');
+  if(greetEl && currentUser) greetEl.textContent = 'สวัสดี, ' + currentUser.name + ' 👋';
+  document.getElementById('h-active-bookings').textContent = activeBookings.filter(b=>['running','pending'].includes(b.status)).length;
+  const icons = {payment:'💸',topup:'💰',refund:'↩️'};
+  const labels = {payment:'ชำระค่าซักผ้า',topup:'เติมเงิน',refund:'คืนเงิน'};
+  const el = document.getElementById('h-recent');
+  el.innerHTML = transactions.slice(0,3).map(t=>`
+    <div class="titem t${t.type}" style="margin-bottom:.5rem">
+      <div class="tico">${icons[t.type]}</div>
+      <div class="tdetail"><div class="ttype">${labels[t.type]}</div><div class="ttime">${t.time}</div></div>
+      <div class="tamt ${t.type==='topup'||t.type==='refund'?'ta-plus':'ta-minus'}">${t.type==='topup'||t.type==='refund'?'+':'-'}${t.amount.toFixed(2)} ฿</div>
+    </div>`).join('');
+}
+
+function updateBalanceUI() {
+  // Persist balance to localStorage so it survives refresh
+  if(currentUser && currentUser.role === 'member') {
+    currentUser.balance = balance;
+    saveSession(currentUser);
+    // Also update in registeredUsers array so next login gets latest balance
+    const stored = registeredUsers.find(u=>u.username===currentUser.username);
+    if(stored) { stored.balance = balance; saveRegisteredUsers(); }
+  }
+  document.getElementById('nav-balance').innerHTML = `💳 ${balance.toFixed(2)} ฿`;
+  document.getElementById('h-balance').textContent = balance.toFixed(2);
+  document.getElementById('w-bal').textContent = balance.toFixed(2);
+  document.getElementById('bk-balance').textContent = balance.toFixed(2);
+  document.getElementById('vend-balance').textContent = balance.toFixed(2);
+  document.getElementById('h-avail').textContent = machines.filter(m=>m.status==='available').length;
+  document.getElementById('h-running').textContent = machines.filter(m=>m.status==='running').length;
+}
+
+// ════════════════════════════════════════════════════════════
+// MACHINES
+// ════════════════════════════════════════════════════════════
+function renderMachines() {
+  const counts = {available:0,running:0,finished:0,maintenance:0};
+  machines.forEach(m=>counts[m.status]=(counts[m.status]||0)+1);
+  document.getElementById('status-chips').innerHTML = `
+    <div class="chip chip-av"><span class="chip-num">${counts.available||0}</span> ว่าง</div>
+    <div class="chip" style="background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2);color:var(--amber)"><span class="chip-num">${counts.booked||0}</span> จองแล้ว</div>
+    <div class="chip chip-ru"><span class="chip-num">${counts.running||0}</span> กำลังซัก</div>
+    <div class="chip chip-fi"><span class="chip-num">${counts.finished||0}</span> เสร็จแล้ว</div>
+    <div class="chip chip-ma"><span class="chip-num">${counts.maintenance||0}</span> ซ่อมบำรุง</div>
+    <div class="chip chip-all"><span class="chip-num">${machines.length}</span> ทั้งหมด</div>`;
+
+  const badgeClassMap = {available:'av',running:'ru',finished:'fi',maintenance:'ma',booked:'bo'};
+  document.getElementById('machines-grid').innerHTML = machines.map(m=>{
+    const prog = m.status==='running' ? Math.min(100,Math.round((Date.now()-m.startAt)/(m.endAt-m.startAt)*100)) : 0;
+    const remain = m.status==='running' ? Math.max(0,Math.round((m.endAt-Date.now())/60000)) : 0;
+    const pendingB = activeBookings.find(b=>b.machineId===m.id && b.status==='pending');
+    const runningB = activeBookings.find(b=>b.machineId===m.id && b.status==='running');
+    const myBooking = pendingB || runningB;
+    const badgeC = badgeClassMap[m.status] || 'av';
+    const ciSec = pendingB ? Math.max(0,Math.floor((pendingB.checkinDeadline-Date.now())/1000)) : 0;
+    return `
+    <div class="mcard mcard-${m.status==='booked'?'booked':m.status}">
+      <div class="mcard-accent"></div>
+      <div class="mcard-body">
+        <div class="mcard-head">
+          <div class="mcard-id">เครื่อง #${m.id}</div>
+          <div class="badge badge-${badgeC}"><div class="badge-dot" ${m.status==='booked'?'style="animation:pulse-dot 1s infinite"':''}></div>${statusLabel[m.status]||m.status}</div>
+        </div>
+        <div class="mcard-type">${m.type}</div>
+        <div class="specs">
+          <div class="spec">⚖️ <strong>${m.cap} kg</strong></div>
+          <div class="spec">💰 <strong>${m.price} ฿</strong></div>
+          <div class="spec">⏱ <strong>${m.dur} นาที</strong></div>
+        </div>
+        ${m.status==='running'?`
+        <div class="timer-wrap">
+          <div class="timer-bar"><div class="timer-fill" style="width:${prog}%"></div></div>
+          <div class="timer-labels"><span>เสร็จใน ${remain} นาที</span><span>${prog}%</span></div>
+        </div>`:''}
+        ${m.status==='booked'?`<div style="font-size:.75rem;color:var(--amber);margin-bottom:.6rem;background:rgba(245,166,35,.07);padding:.38rem .65rem;border-radius:6px;border:1px solid rgba(245,166,35,.15)">⏰ Check-in ใน ${String(Math.floor(ciSec/60)).padStart(2,'0')}:${String(ciSec%60).padStart(2,'0')}</div>`:''}
+        ${myBooking?`<div style="font-size:.72rem;color:${pendingB?'var(--amber)':'var(--accent)'};margin-bottom:.6rem;background:${pendingB?'rgba(245,166,35,.07)':'rgba(91,141,239,.07)'};padding:.35rem .6rem;border-radius:6px;border:1px solid ${pendingB?'rgba(245,166,35,.15)':'rgba(91,141,239,.15)'}">${pendingB?'⏳ รอ Check-in ของคุณ':'📋 การจองของคุณ'}</div>`:''}
+        <div class="mcard-foot">
+          ${m.status==='available'?`
+            <button class="btn btn-primary btn-book-sm" onclick="quickBook(${m.id})">📋 จองเครื่องนี้</button>
+            <button class="btn btn-ghost btn-icon" onclick="showQR('${m.qr}')" title="QR Code">📱</button>
+          `:m.status==='booked'&&pendingB?`
+            <button class="btn btn-primary btn-book-sm" onclick="showQR('${m.qr}',${pendingB.bookingId})">📱 QR Check-in</button>
+            <button class="btn btn-danger btn-icon" onclick="openCancelModal(${pendingB.bookingId})">✕</button>
+          `:`<div style="color:var(--t3);font-size:.78rem">ไม่สามารถจองได้ในขณะนี้</div>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function quickBook(id) {
+  show('booking');
+  setTimeout(()=>selectMachine(id),80);
+}
+// ─── QR Code generation ───
+
+// ── Embedded QR Code encoder (pure JS, no CDN) ──────────────────────────────
+// Based on davidshimjs/qrcodejs algorithm, stripped down
+var QREncoder = (function(){
+  var QRErrorCorrectLevel={L:1,M:0,Q:3,H:2};
+  var QRMaskPattern={PATTERN000:0,PATTERN001:1,PATTERN010:2,PATTERN011:3,PATTERN100:4,PATTERN101:5,PATTERN110:6,PATTERN111:7};
+  var QRUtil={PATTERN_POSITION_TABLE:[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],G15:1335,G18:7973,G15_MASK:21522};
+  QRUtil.getBCHTypeInfo=function(a){var b=a<<10;while(QRUtil.getBCHDigit(b)-QRUtil.getBCHDigit(QRUtil.G15)>=0){b^=QRUtil.G15<<QRUtil.getBCHDigit(b)-QRUtil.getBCHDigit(QRUtil.G15)}return(a<<10|b)^QRUtil.G15_MASK};
+  QRUtil.getBCHTypeNumber=function(a){var b=a<<12;while(QRUtil.getBCHDigit(b)-QRUtil.getBCHDigit(QRUtil.G18)>=0){b^=QRUtil.G18<<QRUtil.getBCHDigit(b)-QRUtil.getBCHDigit(QRUtil.G18)}return a<<12|b};
+  QRUtil.getBCHDigit=function(a){var b=0;while(a!=0){b++;a>>>=1}return b};
+  QRUtil.getPatternPosition=function(a){return QRUtil.PATTERN_POSITION_TABLE[a-1]};
+  QRUtil.getMask=function(a,b,c){switch(a){case QRMaskPattern.PATTERN000:return(b+c)%2==0;case QRMaskPattern.PATTERN001:return b%2==0;case QRMaskPattern.PATTERN010:return c%3==0;case QRMaskPattern.PATTERN011:return(b+c)%3==0;case QRMaskPattern.PATTERN100:return(Math.floor(b/2)+Math.floor(c/3))%2==0;case QRMaskPattern.PATTERN101:return b*c%2+b*c%3==0;case QRMaskPattern.PATTERN110:return(b*c%2+b*c%3)%2==0;case QRMaskPattern.PATTERN111:return(b*c%3+(b+c)%2)%2==0;default:throw new Error("bad maskPattern:"+a)}};
+  QRUtil.getErrorCorrectPolynomial=function(a){var b=new QRPolynomial([1],0);for(var c=0;c<a;c++){b=b.multiply(new QRPolynomial([1,QRMath.gexp(c)],0))}return b};
+  QRUtil.getLengthInBits=function(a,b){if(1<=b&&b<10){switch(a){case QRMode.MODE_NUMBER:return 10;case QRMode.MODE_ALPHA_NUM:return 9;case QRMode.MODE_8BIT_BYTE:return 8;case QRMode.MODE_KANJI:return 8;default:throw new Error("mode:"+a)}}else if(b<27){switch(a){case QRMode.MODE_NUMBER:return 12;case QRMode.MODE_ALPHA_NUM:return 11;case QRMode.MODE_8BIT_BYTE:return 16;case QRMode.MODE_KANJI:return 10;default:throw new Error("mode:"+a)}}else if(b<41){switch(a){case QRMode.MODE_NUMBER:return 14;case QRMode.MODE_ALPHA_NUM:return 13;case QRMode.MODE_8BIT_BYTE:return 16;case QRMode.MODE_KANJI:return 12;default:throw new Error("mode:"+a)}}else{throw new Error("type:"+b)}};
+  QRUtil.getLostPoint=function(a){var b=a.getModuleCount();var c=0;for(var d=0;d<b;d++){for(var e=0;e<b;e++){var f=0;for(var g=-1;g<=1;g++){if(d+g<0||b<=d+g){continue}for(var h=-1;h<=1;h++){if(e+h<0||b<=e+h){continue}if(g==0&&h==0){continue}if(a.isDark(d+g,e+h)){f++}}}if(f<=1){c+=3}else if(f>=6){c+=3}}}for(var d=0;d<b-1;d++){for(var e=0;e<b;e++){var i=0;for(var g=0;g<=1;g++){i|=a.isDark(d+g,e)?1<<g:0}if(i==0||i==3){c+=3}}}for(var d=0;d<b;d++){for(var e=0;e<b-1;e++){var i=0;for(var h=0;h<=1;h++){i|=a.isDark(d,e+h)?1<<h:0}if(i==0||i==3){c+=3}}}for(var d=0;d<b-6;d++){for(var e=0;e<b;e++){if(a.isDark(d,e)&&!a.isDark(d+1,e)&&a.isDark(d+2,e)&&a.isDark(d+3,e)&&a.isDark(d+4,e)&&!a.isDark(d+5,e)&&a.isDark(d+6,e)){c+=40}}}for(var d=0;d<b;d++){for(var e=0;e<b-6;e++){if(a.isDark(d,e)&&!a.isDark(d,e+1)&&a.isDark(d,e+2)&&a.isDark(d,e+3)&&a.isDark(d,e+4)&&!a.isDark(d,e+5)&&a.isDark(d,e+6)){c+=40}}}var j=0;for(var e=0;e<b;e++){for(var d=0;d<b;d++){if(a.isDark(d,e)){j++}}}var k=Math.abs(100*j/b/b-50)/5;c+=k*10;return c};
+  var QRMode={MODE_NUMBER:1<<0,MODE_ALPHA_NUM:1<<1,MODE_8BIT_BYTE:1<<2,MODE_KANJI:1<<3};
+  var QRMath={glog:function(a){if(a<1){throw new Error("glog("+a+")")}return QRMath.LOG_TABLE[a]},gexp:function(a){while(a<0){a+=255}while(a>=256){a-=255}return QRMath.EXP_TABLE[a]},EXP_TABLE:new Array(256),LOG_TABLE:new Array(256)};
+  for(var i=0;i<8;i++){QRMath.EXP_TABLE[i]=1<<i}for(var i=8;i<256;i++){QRMath.EXP_TABLE[i]=QRMath.EXP_TABLE[i-4]^QRMath.EXP_TABLE[i-5]^QRMath.EXP_TABLE[i-6]^QRMath.EXP_TABLE[i-8]}for(var i=0;i<255;i++){QRMath.LOG_TABLE[QRMath.EXP_TABLE[i]]=i}
+  function QRPolynomial(a,b){if(a.length==undefined){throw new Error(a.length+"/"+b)}var c=0;while(c<a.length&&a[c]==0){c++}this.num=new Array(a.length-c+b);for(var i=0;i<a.length-c;i++){this.num[i]=a[i+c]}}
+  QRPolynomial.prototype={get:function(i){return this.num[i]},getLength:function(){return this.num.length},multiply:function(a){var b=new Array(this.getLength()+a.getLength()-1);for(var i=0;i<this.getLength();i++){for(var j=0;j<a.getLength();j++){b[i+j]^=QRMath.gexp(QRMath.glog(this.get(i))+QRMath.glog(a.get(j)))}}return new QRPolynomial(b,0)},mod:function(a){if(this.getLength()-a.getLength()<0){return this}var b=QRMath.glog(this.get(0))-QRMath.glog(a.get(0));var c=new Array(this.getLength());for(var i=0;i<this.getLength();i++){c[i]=this.get(i)}for(var i=0;i<a.getLength();i++){c[i]^=QRMath.gexp(QRMath.glog(a.get(i))+b)}return new QRPolynomial(c,0).mod(a)}};
+  function QRRSBlock(a,b){this.totalCount=a;this.dataCount=b}
+  QRRSBlock.RS_BLOCK_TABLE=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]];
+  QRRSBlock.getRSBlocks=function(a,b){var c=QRRSBlock.getRsBlockTable(a,b);if(c==undefined){throw new Error("bad rs block @ typeNumber:"+a+"/errorCorrectLevel:"+b)}var d=c.length/3;var e=[];for(var i=0;i<d;i++){var f=c[i*3+0];var g=c[i*3+1];var h=c[i*3+2];for(var j=0;j<f;j++){e.push(new QRRSBlock(g,h))}}return e};
+  QRRSBlock.getRsBlockTable=function(a,b){switch(b){case QRErrorCorrectLevel.L:return QRRSBlock.RS_BLOCK_TABLE[(a-1)*4+0];case QRErrorCorrectLevel.M:return QRRSBlock.RS_BLOCK_TABLE[(a-1)*4+1];case QRErrorCorrectLevel.Q:return QRRSBlock.RS_BLOCK_TABLE[(a-1)*4+2];case QRErrorCorrectLevel.H:return QRRSBlock.RS_BLOCK_TABLE[(a-1)*4+3];default:return undefined}};
+  function QRBitBuffer(){this.buffer=[];this.length=0}
+  QRBitBuffer.prototype={get:function(i){var b=Math.floor(i/8);return((this.buffer[b]>>>(7-i%8))&1)==1},put:function(a,b){for(var i=0;i<b;i++){this.putBit(((a>>>(b-i-1))&1)==1)}},getLengthInBits:function(){return this.length},putBit:function(a){var b=Math.floor(this.length/8);if(this.buffer.length<=b){this.buffer.push(0)}if(a){this.buffer[b]|=0x80>>>(this.length%8)}this.length++}};
+  function QR8bitByte(a){this.mode=QRMode.MODE_8BIT_BYTE;this.data=a}
+  QR8bitByte.prototype={getLength:function(){return this.data.length},write:function(a){for(var i=0;i<this.data.length;i++){a.put(this.data.charCodeAt(i),8)}}};
+  function QRCodeModel(a,b){this.typeNumber=a;this.errorCorrectLevel=b;this.modules=null;this.moduleCount=0;this.dataCache=null;this.dataList=[]}
+  QRCodeModel.prototype={addData:function(a){var b=new QR8bitByte(a);this.dataList.push(b);this.dataCache=null},isDark:function(a,b){if(a<0||this.moduleCount<=a||b<0||this.moduleCount<=b){throw new Error(a+","+b)}return this.modules[a][b]},getModuleCount:function(){return this.moduleCount},make:function(){this.makeImpl(false,this.getBestMaskPattern())},makeImpl:function(a,b){this.moduleCount=this.typeNumber*4+17;this.modules=new Array(this.moduleCount);for(var c=0;c<this.moduleCount;c++){this.modules[c]=new Array(this.moduleCount);for(var d=0;d<this.moduleCount;d++){this.modules[c][d]=null}}this.setupPositionProbePattern(0,0);this.setupPositionProbePattern(this.moduleCount-7,0);this.setupPositionProbePattern(0,this.moduleCount-7);this.setupPositionAdjustPattern();this.setupTimingPattern();this.setupTypeInfo(a,b);if(this.typeNumber>=7){this.setupTypeNumber(a)}if(this.dataCache==null){this.dataCache=QRCodeModel.createData(this.typeNumber,this.errorCorrectLevel,this.dataList)}this.mapData(this.dataCache,b)},setupPositionProbePattern:function(a,b){for(var c=-1;c<=7;c++){if(a+c<=-1||this.moduleCount<=a+c){continue}for(var d=-1;d<=7;d++){if(b+d<=-1||this.moduleCount<=b+d){continue}if((0<=c&&c<=6&&(d==0||d==6))||(0<=d&&d<=6&&(c==0||c==6))||(2<=c&&c<=4&&2<=d&&d<=4)){this.modules[a+c][b+d]=true}else{this.modules[a+c][b+d]=false}}}},getBestMaskPattern:function(){var a=0;var b=0;for(var c=0;c<8;c++){this.makeImpl(true,c);var d=QRUtil.getLostPoint(this);if(c==0||a>d){a=d;b=c}}return b},setupTimingPattern:function(){for(var a=8;a<this.moduleCount-8;a++){if(this.modules[a][6]!=null){continue}this.modules[a][6]=(a%2==0)}for(var b=8;b<this.moduleCount-8;b++){if(this.modules[6][b]!=null){continue}this.modules[6][b]=(b%2==0)}},setupPositionAdjustPattern:function(){var a=QRUtil.getPatternPosition(this.typeNumber);for(var i=0;i<a.length;i++){for(var j=0;j<a.length;j++){var b=a[i];var c=a[j];if(this.modules[b][c]!=null){continue}for(var r=-2;r<=2;r++){for(var s=-2;s<=2;s++){if(r==-2||r==2||s==-2||s==2||(r==0&&s==0)){this.modules[b+r][c+s]=true}else{this.modules[b+r][c+s]=false}}}}}},setupTypeNumber:function(a){var b=QRUtil.getBCHTypeNumber(this.typeNumber);for(var i=0;i<18;i++){var c=(!a&&((b>>i)&1)==1);this.modules[Math.floor(i/3)][i%3+this.moduleCount-8-3]=c}for(var i=0;i<18;i++){var c=(!a&&((b>>i)&1)==1);this.modules[i%3+this.moduleCount-8-3][Math.floor(i/3)]=c}},setupTypeInfo:function(a,b){var c=this.errorCorrectLevel<<3|b;var d=QRUtil.getBCHTypeInfo(c);for(var i=0;i<15;i++){var e=(!a&&((d>>i)&1)==1);if(i<6){this.modules[i][8]=e}else if(i<8){this.modules[i+1][8]=e}else{this.modules[this.moduleCount-15+i][8]=e}}for(var i=0;i<15;i++){var e=(!a&&((d>>i)&1)==1);if(i<8){this.modules[8][this.moduleCount-i-1]=e}else if(i<9){this.modules[8][15-i-1+1]=e}else{this.modules[8][15-i-1]=e}}this.modules[this.moduleCount-8][8]=(!a)},mapData:function(a,b){var c=-1;var d=this.moduleCount-1;var e=7;var f=false;var g=0;for(var h=this.moduleCount-1;h>0;h-=2){if(h==6){h--}while(true){for(var i=0;i<2;i++){if(this.modules[d][h-i]==null){var j=false;if(g<a.length){j=((a[g]>>>e)&1)==1}if(QRUtil.getMask(b,d,h-i)){j=!j}this.modules[d][h-i]=j;e--;if(e==-1){g++;e=7}}}d+=c;if(d<0||this.moduleCount<=d){d-=c;c=-c;break}}}},};
+  QRCodeModel.PAD0=0xEC;QRCodeModel.PAD1=0x11;
+  QRCodeModel.createData=function(a,b,c){var d=QRRSBlock.getRSBlocks(a,b);var e=new QRBitBuffer();for(var i=0;i<c.length;i++){var f=c[i];e.put(f.mode,4);e.put(f.getLength(),QRUtil.getLengthInBits(f.mode,a));f.write(e)}var g=0;for(var i=0;i<d.length;i++){g+=d[i].dataCount}if(e.getLengthInBits()>g*8){throw new Error("code length overflow. ("+e.getLengthInBits()+">"+g*8+")")}if(e.getLengthInBits()+4<=g*8){e.put(0,4)}while(e.getLengthInBits()%8!=0){e.putBit(false)}while(true){if(e.getLengthInBits()>=g*8){break}e.put(QRCodeModel.PAD0,8);if(e.getLengthInBits()>=g*8){break}e.put(QRCodeModel.PAD1,8)}return QRCodeModel.createBytes(e,d)};
+  QRCodeModel.createBytes=function(a,b){var c=0;var d=0;var e=0;var f=new Array(b.length);var g=new Array(b.length);for(var i=0;i<b.length;i++){var h=b[i].dataCount;var j=b[i].totalCount-h;d=Math.max(d,h);e=Math.max(e,j);f[i]=new Array(h);for(var r=0;r<f[i].length;r++){f[i][r]=0xff&a.buffer[c++]}g[i]=new Array(j);var k=new QRPolynomial(f[i],g[i].length);var l=QRUtil.getErrorCorrectPolynomial(g[i].length);var m=k.mod(l);for(var r=0;r<g[i].length;r++){var n=r+m.getLength()-g[i].length;g[i][r]=(n>=0)?m.get(n):0}}var o=0;var p=new Array(c);for(var r=0;r<d;r++){for(var i=0;i<b.length;i++){if(r<f[i].length){p[o++]=f[i][r]}}}for(var r=0;r<e;r++){for(var i=0;i<b.length;i++){if(r<g[i].length){p[o++]=g[i][r]}}}return p};
+
+  // Public API: render QR to canvas
+  // Count actual UTF-8 bytes (what QR encoder uses)
+  function utf8Len(str) {
+    var n=0;
+    for(var i=0;i<str.length;i++){
+      var c=str.charCodeAt(i);
+      if(c<0x80)n+=1; else if(c<0x800)n+=2; else if(c<0x10000)n+=3; else n+=4;
+    }
+    return n;
+  }
+
+  // Find smallest type number that fits the data
+  function getTypeNumber(text, ecc) {
+    var blen = utf8Len(text);
+    for(var t=1;t<=40;t++){
+      try {
+        var rsb = QRRSBlock.getRSBlocks(t, ecc);
+        var cap = 0; for(var i=0;i<rsb.length;i++) cap += rsb[i].dataCount;
+        // 8BIT mode: 4 mode bits + 8 length bits + blen*8 data bits, all in bytes
+        if(cap >= Math.ceil((4+8+blen*8)/8)) return t;
+      } catch(e){}
+    }
+    return 40;
+  }
+
+  function renderToCanvas(text, canvas, options) {
+    options = options || {};
+    var size  = options.size  || 210;
+    var quiet = options.quiet || 6;
+    var ecc   = (options.ecc !== undefined) ? options.ecc : QRErrorCorrectLevel.M;
+
+    canvas.width = size;
+    canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    var tn = getTypeNumber(text, ecc);
+    var qr = new QRCodeModel(tn, ecc);
+    qr.addData(text);
+    qr.make();
+
+    var mc = qr.getModuleCount();
+    var cell = (size - quiet*2) / mc;
+
+    ctx.fillStyle = options.light || '#ffffff';
+    ctx.fillRect(0,0,size,size);
+    ctx.fillStyle = options.dark || '#111111';
+
+    for(var r=0;r<mc;r++){
+      for(var c=0;c<mc;c++){
+        if(qr.isDark(r,c)){
+          ctx.fillRect(
+            Math.floor(quiet + c*cell),
+            Math.floor(quiet + r*cell),
+            Math.ceil(cell)+1,
+            Math.ceil(cell)+1
+          );
+        }
+      }
+    }
+    return canvas;
+  }
+
+  return { renderToCanvas:renderToCanvas, getTypeNumber:getTypeNumber };
+})();
+
+function showQR(machineQrCode, bookingId) {
+  const m = machines.find(x=>x.qr===machineQrCode || x.id===machineQrCode);
+  if(!m) return;
+
+  // Encode only a short token: "LAUNDRY:machineId:bookingId:timestamp"
+  // This is NOT a URL — just a verifiable code that the app reads
+  const token = 'LAUNDRY:' + m.id + ':' + (bookingId||0) + ':' + Math.floor(Date.now()/60000);
+  // token changes every minute (anti-replay) — encode machineId & bookingId only
+
+  document.getElementById('qr-modal-title').textContent = 'สแกน QR — เครื่อง #' + m.id;
+  document.getElementById('qrCodeText').textContent = m.qr;
+  document.getElementById('qr-booking-id-text').textContent = bookingId ? 'การจอง #' + bookingId : 'QR หมดอายุทุก 1 นาที';
+
+  const wrap = document.getElementById('qr-canvas-wrap');
+  wrap.innerHTML = '';
+  wrap.style.minWidth = '220px';
+  wrap.style.minHeight = '220px';
+
+  // Remove any previous link element after wrap
+  const prev = wrap.nextElementSibling;
+  if(prev && prev.tagName==='DIV' && prev.getAttribute('data-qr-link')) prev.remove();
+
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'border-radius:8px;display:block';
+    QREncoder.renderToCanvas(token, canvas, {size:220, quiet:8, dark:'#111111', light:'#ffffff', ecc:1});
+    wrap.appendChild(canvas);
+
+    // Add scan instruction
+    const note = document.createElement('div');
+    note.setAttribute('data-qr-link','1');
+    note.style.cssText = 'margin-top:.6rem;font-size:.72rem;color:var(--t3);text-align:center;line-height:1.5';
+    note.innerHTML = 'Token: <code style="color:var(--accent);font-size:.68rem">' + token.replace(':'+Math.floor(Date.now()/60000),'') + ':...</code>';
+    wrap.after(note);
+  } catch(e) {
+    wrap.innerHTML = '<div style="padding:1rem;color:#555;font-size:.8rem;text-align:center">QR Error: '+e.message+'</div>';
+  }
+
+  // Store pending bookingId for scan handler
+  window._pendingQRBookingId = bookingId || null;
+  window._pendingQRMachineId = m.id;
+
+  document.getElementById('qrModal').classList.add('show');
+  // Start QR refresh timer (token changes every minute)
+  if(window._qrRefresh) clearInterval(window._qrRefresh);
+  window._qrRefresh = setInterval(()=>{
+    if(!document.getElementById('qrModal').classList.contains('show')){clearInterval(window._qrRefresh);return;}
+    showQR(machineQrCode, bookingId); // refresh QR
+  }, 60000);
+}
+function closeQR() { document.getElementById('qrModal').classList.remove('show'); }
+
+// ─── Real-time countdown ticker ───
+let countdownInterval = null;
+
+function startCountdownTicker() {
+  if(countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    const page = document.getElementById('page-mybookings');
+    if(!page || !page.classList.contains('active')) return;
+    // Update all countdown displays in active booking cards
+    document.querySelectorAll('[data-deadline]').forEach(el => {
+      const deadline = parseInt(el.getAttribute('data-deadline'));
+      const remain = Math.max(0, deadline - Date.now());
+      const totalMs = parseInt(el.getAttribute('data-total') || CHECKIN_TIMEOUT_MS);
+      const sec = Math.floor(remain / 1000);
+      const min = Math.floor(sec / 60);
+      const s = sec % 60;
+      el.textContent = String(min).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+      // Update urgency color
+      const isUrgent = remain < 3 * 60000;
+      el.style.color = isUrgent ? 'var(--red)' : 'var(--amber)';
+      // Update progress bar
+      const barId = el.getAttribute('data-bar');
+      if(barId) {
+        const bar = document.getElementById(barId);
+        if(bar) {
+          const pct = Math.max(0, remain / totalMs * 100);
+          bar.style.width = pct + '%';
+          bar.style.background = isUrgent ? 'var(--red)' : 'var(--amber)';
+        }
+      }
+      // Re-render if just expired
+      if(remain === 0) renderMyBookings();
+    });
+  }, 1000);
+}
+
+// Start ticker immediately
+startCountdownTicker();
+
+// ─── Mobile check-in page (URL params) ───
+// ════════════════════════════════════════════════════════════
+// QR SCANNER — สแกน QR Code ด้วยกล้อง
+// ════════════════════════════════════════════════════════════
+let scanStream = null;
+let scanInterval = null;
+let currentScanBookingId = null;
+
+function openQRScanner(bookingId) {
+  currentScanBookingId = bookingId || null;
+  document.getElementById('scanner-status').textContent = 'กำลังเปิดกล้อง...';
+  document.getElementById('scanner-error').style.display = 'none';
+  document.getElementById('qrScannerModal').classList.add('show');
+  startCamera();
+}
+
+function closeQRScanner() {
+  stopCamera();
+  document.getElementById('qrScannerModal').classList.remove('show');
+}
+
+function startCamera() {
+  const video = document.getElementById('scanner-video');
+  const status = document.getElementById('scanner-status');
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    status.textContent = '❌ เบราว์เซอร์ไม่รองรับกล้อง กรุณาใช้ Chrome';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}}})
+    .then(stream => {
+      scanStream = stream;
+      video.srcObject = stream;
+      video.play();
+      status.textContent = '🔍 ชี้กล้องไปที่ QR Code';
+      if(scanInterval) clearInterval(scanInterval);
+      scanInterval = setInterval(() => scanFrame(video), 250);
+    }).catch(err => {
+      status.textContent = '❌ เปิดกล้องไม่ได้: ' + (err.message || err);
+    });
+}
+
+function stopCamera() {
+  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
+  if(scanInterval){ clearInterval(scanInterval); scanInterval=null; }
+  const v = document.getElementById('scanner-video');
+  if(v) v.srcObject = null;
+}
+
+function scanFrame(video) {
+  if(!video.videoWidth) return;
+  if(!('BarcodeDetector' in window)) {
+    document.getElementById('scanner-status').textContent = '⚠️ กล้องพร้อม แต่เบราว์เซอร์ไม่รองรับ QR scan อัตโนมัติ — ลองกรอก code ด้านล่าง';
+    clearInterval(scanInterval);
+    return;
+  }
+  const c = document.createElement('canvas');
+  c.width = video.videoWidth; c.height = video.videoHeight;
+  c.getContext('2d').drawImage(video, 0, 0);
+  new BarcodeDetector({formats:['qr_code']}).detect(c)
+    .then(codes => { if(codes.length > 0) handleScannedCode(codes[0].rawValue); })
+    .catch(()=>{});
+}
+
+function handleScannedCode(raw) {
+  if(!raw || !raw.startsWith('LAUNDRY:')) {
+    document.getElementById('scanner-status').textContent = '❌ QR ไม่ใช่ของ LaundryPro';
+    return;
+  }
+  const parts = raw.split(':');
+  if(parts.length < 4) return;
+  const machineId = parseInt(parts[1]);
+  const bookingId = parseInt(parts[2]);
+  const qrMin     = parseInt(parts[3]);
+  const nowMin    = Math.floor(Date.now()/60000);
+  if(Math.abs(nowMin - qrMin) > 2) {
+    document.getElementById('scanner-status').textContent = '⏰ QR หมดอายุแล้ว ให้เจ้าของจองกดสร้าง QR ใหม่';
+    return;
+  }
+  const b = activeBookings.find(x=>x.bookingId===bookingId && x.machineId===machineId && x.status==='pending')
+         || activeBookings.find(x=>x.machineId===machineId && x.status==='pending');
+  if(!b) {
+    document.getElementById('scanner-status').textContent = '❌ ไม่พบการจองที่รอ Check-in สำหรับเครื่องนี้';
+    return;
+  }
+  // Security: make sure booking belongs to current user
+  if(currentScanBookingId && b.bookingId !== currentScanBookingId) {
+    document.getElementById('scanner-status').textContent = '❌ QR นี้ไม่ตรงกับการจองของคุณ (#' + currentScanBookingId + ')';
+    return;
+  }
+  stopCamera();
+  document.getElementById('qrScannerModal').classList.remove('show');
+  showScanConfirm(b, machineId);
+}
+
+function showScanConfirm(b, machineId) {
+  const m = machines.find(x=>x.id===machineId);
+  const remain = Math.max(0, Math.floor((b.checkinDeadline - Date.now())/1000));
+  document.getElementById('scan-machine-name').textContent = 'เครื่อง #' + machineId;
+  document.getElementById('scan-machine-info').textContent = m ? m.type+' · '+m.cap+' kg · '+m.price+' ฿' : '';
+  document.getElementById('scan-booking-detail').innerHTML =
+    '<div style="display:flex;justify-content:space-between;margin-bottom:.3rem">' +
+    '<span style="color:var(--t3)">การจอง</span><strong>#'+b.bookingId+'</strong></div>' +
+    '<div style="display:flex;justify-content:space-between">' +
+    '<span style="color:var(--t3)">ค่าบริการ</span><strong style="color:var(--amber)">'+b.price.toFixed(2)+' ฿</strong></div>';
+  document.getElementById('scan-error-box').style.display = 'none';
+  document.getElementById('scan-success-box').style.display = 'none';
+  document.getElementById('scan-btn-row').style.display = 'flex';
+  document.getElementById('scan-confirm-btn').disabled = false;
+  document.getElementById('scan-confirm-btn').setAttribute('data-bid', b.bookingId);
+  document.getElementById('scan-timer-box').style.display = 'flex';
+  const cdEl = document.getElementById('scan-countdown');
+  cdEl.textContent = String(Math.floor(remain/60)).padStart(2,'0')+':'+String(remain%60).padStart(2,'0');
+  document.getElementById('scanCheckinModal').classList.add('show');
+  if(window._scanCdInterval) clearInterval(window._scanCdInterval);
+  window._scanCdInterval = setInterval(()=>{
+    const r2 = Math.max(0, Math.floor((b.checkinDeadline-Date.now())/1000));
+    const el = document.getElementById('scan-countdown');
+    if(el){ el.textContent=String(Math.floor(r2/60)).padStart(2,'0')+':'+String(r2%60).padStart(2,'0'); el.style.color=r2<180?'var(--red)':'var(--amber)'; }
+    if(r2<=0) clearInterval(window._scanCdInterval);
+  }, 1000);
+}
+
+function scanDoCheckin() {
+  const bid = parseInt(document.getElementById('scan-confirm-btn').getAttribute('data-bid'));
+  if(!bid) return;
+  document.getElementById('scan-confirm-btn').disabled = true;
+  doCheckin(bid);
+  if(window._scanCdInterval) clearInterval(window._scanCdInterval);
+  document.getElementById('scan-success-box').style.display = 'block';
+  document.getElementById('scan-btn-row').style.display = 'none';
+  document.getElementById('scan-timer-box').style.display = 'none';
+  setTimeout(()=>closeScanModal(), 2200);
+}
+
+function closeScanModal() {
+  document.getElementById('scanCheckinModal').classList.remove('show');
+  if(window._scanCdInterval) clearInterval(window._scanCdInterval);
+}
+
+// Stubs for legacy calls
+function checkMobileCheckin() {}
+function mobileDoCheckin() {}
+function startMobileCountdown() {}
+
+// ════════════════════════════════════════════════════════════
+// MY BOOKINGS + CANCEL SYSTEM
+// ════════════════════════════════════════════════════════════
+function buildBookingCard(b) {
+  const m = machines.find(x=>x.id===b.machineId);
+  const elapsed = Math.round((Date.now()-b.bookedAt)/60000);
+  const barId = 'bar-'+b.bookingId;
+  const cdId = 'cd-'+b.bookingId;
+
+  if(b.status==='pending') {
+    const deadlineRemainMs = Math.max(0, b.checkinDeadline - Date.now());
+    const pct = Math.max(0, deadlineRemainMs / CHECKIN_TIMEOUT_MS * 100);
+    const isUrgent = deadlineRemainMs < 3*60000;
+    const accentColor = isUrgent ? 'var(--red)' : 'var(--amber)';
+    const borderColor = isUrgent ? 'rgba(245,95,95,.35)' : 'rgba(245,166,35,.25)';
+    const bgColor    = isUrgent ? 'rgba(245,95,95,.07)' : 'rgba(245,166,35,.07)';
+    const bdrColor   = isUrgent ? 'rgba(245,95,95,.2)' : 'rgba(245,166,35,.2)';
+    const badgeStyle = isUrgent
+      ? 'background:rgba(245,95,95,.15);color:var(--red);border:1px solid rgba(245,95,95,.3)'
+      : 'background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)';
+    const urgentMsg = isUrgent ? '⚠️ กรุณารีบมา Check-in! หากไม่มาจะยกเลิกอัตโนมัติและคืนเงิน' : 'กรุณาสแกน QR Code ด้านล่างเพื่อ Check-in ก่อนหมดเวลา';
+    const sec0 = Math.floor(deadlineRemainMs/1000);
+    const initCD = String(Math.floor(sec0/60)).padStart(2,'0')+':'+String(sec0%60).padStart(2,'0');
+    const qrCode = m ? m.qr : 'QR';
+
+    return '<div class="active-booking-card" style="border-color:'+borderColor+';border-left:3px solid '+accentColor+'">'
+      + '<div class="ab-head">'
+      +   '<div><div class="ab-title">📋 '+b.machineName+'</div>'
+      +   '<div class="ab-time">จองเมื่อ '+elapsed+' นาทีที่แล้ว · #'+b.bookingId+'</div></div>'
+      +   '<div class="badge" style="'+badgeStyle+'"><div class="badge-dot" style="animation:pulse-dot 1s infinite"></div>รอ Check-in</div>'
+      + '</div>'
+      + '<div class="ab-info">'
+      +   '<div class="ab-info-item">ประเภท <strong>'+b.machineType+'</strong></div>'
+      +   '<div class="ab-info-item">ความจุ <strong>'+b.cap+' kg</strong></div>'
+      + '</div>'
+      + '<div style="background:'+bgColor+';border:1px solid '+bdrColor+';border-radius:10px;padding:.9rem 1rem;margin-bottom:.9rem">'
+      +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">'
+      +     '<span style="font-size:.8rem;color:var(--t3)">⏰ หมดเวลา Check-in ใน</span>'
+      +     '<span id="'+cdId+'" data-deadline="'+b.checkinDeadline+'" data-total="'+CHECKIN_TIMEOUT_MS+'" data-bar="'+barId+'" style="font-family:JetBrains Mono,monospace;font-size:1.3rem;font-weight:800;color:'+accentColor+'">'+initCD+'</span>'
+      +   '</div>'
+      +   '<div style="height:7px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden">'
+      +     '<div id="'+barId+'" style="height:100%;width:'+pct+'%;background:'+accentColor+';border-radius:4px;transition:width 1s linear"></div>'
+      +   '</div>'
+      +   '<div style="font-size:.75rem;color:var(--t3);margin-top:.45rem">'+urgentMsg+'</div>'
+      + '</div>'
+      + '<div class="ab-price"><span>ค่าบริการที่ชำระแล้ว</span><strong>'+b.price.toFixed(2)+' ฿</strong></div>'
+      + '<div style="display:flex;gap:.6rem;margin-top:.75rem">'
+      +   '<button class="btn btn-primary" style="flex:1;font-size:.85rem" onclick="openQRScanner('+b.bookingId+')">📷 สแกน QR Check-in</button>'
+      +   '<button class="btn btn-danger btn-sm" onclick="openCancelModal('+b.bookingId+')" title="ยกเลิก">✕</button>'
+      + '</div>'
+      + '</div>';
+
+  } else {
+    // RUNNING — no cancel button
+    const remain = Math.max(0, Math.round((b.endAt-Date.now())/60000));
+    const prog = b.endAt ? Math.min(100,Math.round((Date.now()-b.bookedAt)/(b.endAt-b.bookedAt)*100)) : 0;
+    const hh = String(Math.floor(remain/60)).padStart(2,'0');
+    const mm = String(remain%60).padStart(2,'0');
+    const qrCode = m ? m.qr : 'QR';
+    return '<div class="active-booking-card">'
+      + '<div class="ab-head">'
+      +   '<div><div class="ab-title">📋 '+b.machineName+'</div>'
+      +   '<div class="ab-time">จองเมื่อ '+elapsed+' นาทีที่แล้ว · #'+b.bookingId+'</div></div>'
+      +   '<div class="badge badge-ru"><div class="badge-dot"></div>กำลังซัก</div>'
+      + '</div>'
+      + '<div class="ab-info">'
+      +   '<div class="ab-info-item">ประเภท <strong>'+b.machineType+'</strong></div>'
+      +   '<div class="ab-info-item">ความจุ <strong>'+b.cap+' kg</strong></div>'
+      + '</div>'
+      + '<div class="timer-wrap">'
+      +   '<div class="timer-bar"><div class="timer-fill" style="width:'+prog+'%"></div></div>'
+      +   '<div class="timer-labels"><span>ความคืบหน้า '+prog+'%</span><span>เหลือ ~'+remain+' นาที</span></div>'
+      + '</div>'
+      + '<div class="ab-countdown">'
+      +   '<span>⏱ เสร็จในอีก</span>'
+      +   '<span class="ab-countdown-val">'+hh+':'+mm+'</span>'
+      +   '<span>ชั่วโมง:นาที</span>'
+      + '</div>'
+      + '<div class="ab-price"><span>ค่าบริการที่ชำระแล้ว</span><strong>'+b.price.toFixed(2)+' ฿</strong></div>'
+      + '<div style="margin-top:.75rem">'
+      +   '<div style="font-size:.78rem;color:var(--t3);background:rgba(46,216,160,.06);border:1px solid rgba(46,216,160,.12);border-radius:8px;padding:.45rem .75rem;text-align:center">✅ Check-in แล้ว — ไม่สามารถยกเลิกได้</div>'
+      + '</div>'
+      + '</div>';
+  }
+}
+
+function renderMyBookings() {
+  const activeEl = document.getElementById('mybookings-active');
+  const histEl = document.getElementById('mybookings-history');
+  const pending = activeBookings.filter(b=>b.status==='pending');
+  const running = activeBookings.filter(b=>b.status==='running');
+  const allActive = [...pending, ...running];
+
+  if(allActive.length===0) {
+    activeEl.innerHTML = `
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:14px">
+        <div class="empty-state">
+          <div class="empty-icon">🌀</div>
+          <div class="empty-text">ไม่มีการจองที่กำลังดำเนินอยู่</div>
+          <button class="btn btn-primary" style="margin-top:1rem" onclick="show('booking')">จองเครื่องใหม่</button>
+        </div>
+      </div>`;
+  } else {
+    activeEl.innerHTML = `
+      <div style="font-size:.8rem;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.9rem;display:flex;align-items:center;gap:.5rem">
+        <div class="live-dot"></div> กำลังดำเนินอยู่ (${allActive.length})
+      </div>
+      ${allActive.map(b=>buildBookingCard(b)).join('')}`;
+  }
+
+  // History
+  const statusColors = {finished:'var(--green)',cancelled:'var(--red)',auto_cancelled:'var(--red)',running:'var(--accent)',pending:'var(--amber)'};
+  const statusLabels2 = {finished:'เสร็จสิ้น',cancelled:'ยกเลิกแล้ว',auto_cancelled:'ยกเลิกอัตโนมัติ (ไม่ Check-in)',running:'กำลังซัก',pending:'รอ Check-in'};
+  const hist = bookingHistory.concat(activeBookings.filter(b=>!['running','pending'].includes(b.status)).map(b=>({...b,bookedAt:new Date(b.bookedAt).toLocaleString('th-TH')})));
+  histEl.innerHTML = hist.length===0
+    ? `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">ยังไม่มีประวัติการจอง</div></div>`
+    : hist.map(b=>`
+      <div class="titem" style="margin-bottom:.5rem">
+        <div class="tico" style="background:rgba(255,255,255,.05)">🫧</div>
+        <div class="tdetail">
+          <div class="ttype">\${b.machineName} — \${b.machineType}</div>
+          <div class="tnote">#\${b.bookingId} \${b.refunded?'· คืนเงินแล้ว':''}</div>
+          <div class="ttime">\${typeof b.bookedAt==='number'?new Date(b.bookedAt).toLocaleString('th-TH'):b.bookedAt}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="tamt ta-minus">\${b.price.toFixed(2)} ฿</div>
+          <div style="font-size:.72rem;color:\${statusColors[b.status]||'var(--t3)'};margin-top:.2rem">\${statusLabels2[b.status]||b.status}</div>
+        </div>
+      </div>`).join('');
+}
+
+// ─── Cancel Modal ───
+function openCancelModal(bookingId) {
+  cancelTargetId = bookingId;
+  const b = activeBookings.find(x=>x.bookingId===bookingId);
+  if(!b) return;
+  document.getElementById('cancel-modal-detail').innerHTML = `
+    <div class="modal-detail-row"><span>การจอง</span><strong>#${b.bookingId}</strong></div>
+    <div class="modal-detail-row"><span>เครื่อง</span><strong>${b.machineName} (${b.machineType})</strong></div>
+    <div class="modal-detail-row"><span>ค่าบริการ</span><strong>${b.price.toFixed(2)} ฿</strong></div>
+    <div class="modal-detail-row"><span>ยอดที่จะได้รับคืน</span><strong style="color:var(--green)">${b.price.toFixed(2)} ฿</strong></div>`;
+  document.getElementById('cancelModal').classList.add('show');
+}
+
+function closeCancelModal() {
+  document.getElementById('cancelModal').classList.remove('show');
+  cancelTargetId = null;
+}
+
+function doCancel() {
+  const b = activeBookings.find(x=>x.bookingId===cancelTargetId);
+  if(!b) return;
+
+  // Refund
+  balance += b.price;
+  b.status = 'cancelled';
+
+  // Update machine
+  const m = machines.find(x=>x.id===b.machineId);
+  if(m) { m.status = 'available'; delete m.startAt; delete m.endAt; delete m.checkinDeadline; }
+
+  // Log transaction
+  transactions.unshift({id:Date.now(),type:'refund',time:new Date().toLocaleString('th-TH'),amount:b.price,note:`คืนเงิน — ยกเลิกการจอง ${b.machineName}`});
+
+  // Move to history
+  bookingHistory.unshift({bookingId:b.bookingId,machineName:b.machineName,machineType:b.machineType,price:b.price,bookedAt:new Date(b.bookedAt).toLocaleString('th-TH'),status:'cancelled',refunded:true});
+
+  closeCancelModal();
+  updateBalanceUI();
+  toast(`ยกเลิกการจอง ${b.machineName} สำเร็จ คืนเงิน ${b.price.toFixed(2)} ฿`,'s');
+  renderMyBookings();
+}
+
+// ════════════════════════════════════════════════════════════
+// BOOKING PAGE
+// ════════════════════════════════════════════════════════════
+function renderBooking() {
+  document.getElementById('bk-balance').textContent = balance.toFixed(2);
+  const avail = machines.filter(m=>m.status==='available');
+  const grid = document.getElementById('book-machines');
+  grid.innerHTML = avail.length ? avail.map(m=>`
+    <div class="mselect ${selectedMachineId===m.id?'sel':''}" onclick="selectMachine(${m.id})">
+      <div class="msel-head">
+        <span class="msel-label">${m.type}</span>
+        ${selectedMachineId===m.id?'<span class="msel-check">✓</span>':''}
+      </div>
+      <div class="msel-name">เครื่อง #${m.id}</div>
+      <div class="msel-row"><span>${m.cap} kg · ${m.dur} นาที</span><span class="price-tag">${m.price} ฿</span></div>
+    </div>`).join('')
+    : `<div class="empty-state"><div class="empty-icon">😴</div><div class="empty-text">ไม่มีเครื่องว่างในขณะนี้</div></div>`;
+}
+
+function selectMachine(id) {
+  selectedMachineId = id;
+  renderBooking();
+  const m = machines.find(x=>x.id===id);
+  if(!m) return;
+  const after = balance - m.price;
+  const insufficient = balance < m.price;
+  const card = document.getElementById('sum-card');
+  document.getElementById('sum-placeholder').style.display = 'none';
+  card.style.display = 'block';
+  card.classList.add('pop');
+  setTimeout(()=>card.classList.remove('pop'),350);
+  card.innerHTML = `
+    <div class="sum-title">📋 สรุปการจอง</div>
+    <div class="sum-rows">
+      <div class="sum-row"><span>เครื่องที่เลือก</span><strong>เครื่อง #${m.id}</strong></div>
+      <div class="sum-row"><span>ประเภท</span><strong>${m.type}</strong></div>
+      <div class="sum-row"><span>ความจุ</span><strong>${m.cap} kg</strong></div>
+      <div class="sum-row"><span>ระยะเวลา</span><strong>${m.dur} นาที</strong></div>
+      <div class="sum-div"></div>
+      <div class="sum-row sum-total"><span>ค่าบริการ</span><strong>${m.price.toFixed(2)} ฿</strong></div>
+      <div class="sum-row"><span>ยอดหลังหัก</span><strong style="color:${after<0?'var(--red)':'var(--t1)'}">${after.toFixed(2)} ฿</strong></div>
+    </div>
+    ${insufficient?`<div class="warn-box">⚠️ ยอดเงินไม่เพียงพอ<span class="topup-link" onclick="show('wallet')">เติมเงิน →</span></div>`:''}
+    <button class="btn btn-primary btn-full" onclick="doBooking()" ${insufficient?'disabled':''}>🫧 ยืนยันการจอง</button>`;
+}
+
+const CHECKIN_TIMEOUT_MS = 10 * 60 * 1000; // 10 นาที
+
+function doBooking() {
+  const m = machines.find(x=>x.id===selectedMachineId);
+  if(!m || balance < m.price) return;
+  const bid = ++bookingIdCounter;
+  balance -= m.price;
+  // เครื่องยัง 'available' รอ check-in ก่อน
+  m.status = 'booked';
+  const deadline = Date.now() + CHECKIN_TIMEOUT_MS;
+  activeBookings.push({
+    bookingId:bid,
+    machineId:m.id,
+    machineName:`เครื่อง #${m.id}`,
+    machineType:m.type,
+    cap:m.cap,
+    price:m.price,
+    bookedAt:Date.now(),
+    checkinDeadline:deadline,
+    endAt:null,
+    status:'pending' // รอ check-in
+  });
+  transactions.unshift({id:Date.now(),type:'payment',time:new Date().toLocaleString('th-TH'),amount:m.price,note:`ชำระค่าซักผ้า เครื่อง #${m.id}`});
+  updateBalanceUI();
+  selectedMachineId = null;
+  document.getElementById('sum-card').style.display = 'none';
+  document.getElementById('sum-placeholder').style.display = 'block';
+  toast(`จองเครื่อง #${m.id} สำเร็จ! กรุณา Check-in ภายใน 10 นาที ⏱`,'s');
+  show('mybookings');
+}
+
+// Check-in: ยืนยันมาถึงแล้ว เริ่มซักได้
+function doCheckin(bookingId) {
+  const b = activeBookings.find(x=>x.bookingId===bookingId && x.status==='pending');
+  if(!b) return;
+  if(Date.now() > b.checkinDeadline) {
+    toast('หมดเวลา Check-in แล้ว การจองถูกยกเลิกไปแล้ว','e');
+    return;
+  }
+  const m = machines.find(x=>x.id===b.machineId);
+  if(!m) return;
+  b.status = 'running';
+  b.endAt = Date.now() + m.dur * 60000;
+  m.status = 'running';
+  m.startAt = Date.now();
+  m.endAt = b.endAt;
+  toast(`✅ Check-in เครื่อง #${m.id} สำเร็จ! เริ่มซักได้เลย 🫧`,'s');
+  renderMyBookings();
+  updateBalanceUI();
+}
+
+// ════════════════════════════════════════════════════════════
+// WALLET
+// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// WALLET & PAYMENT SYSTEM
+// ════════════════════════════════════════════════════════════
+let topupAmt = 0;
+let selectedPayMethod = 'promptpay';
+
+function setAmt(v) {
+  topupAmt = v;
+  document.getElementById('topup-input').value = v;
+  document.querySelectorAll('.amt-btn').forEach(b=>b.classList.remove('on'));
+  event.target.classList.add('on');
+}
+function clearAmtBtns() {
+  document.querySelectorAll('.amt-btn').forEach(b=>b.classList.remove('on'));
+  topupAmt = parseFloat(document.getElementById('topup-input').value)||0;
+}
+function selectPayMethod(method) {
+  selectedPayMethod = method;
+  document.querySelectorAll('.pay-method-card').forEach(el=>el.classList.remove('selected'));
+  document.getElementById('pm-'+method).classList.add('selected');
+}
+
+function openPaymentModal() {
+  const amt = parseFloat(document.getElementById('topup-input').value)||topupAmt;
+  if(!amt || amt < 20 || amt > 10000) {
+    toast('กรุณากรอกจำนวนเงิน 20 – 10,000 ฿','e');
+    return;
+  }
+  window._payAmt = amt;
+  window._payMethod = selectedPayMethod;
+  setPayStep(1);
+  document.getElementById('paymentModal').classList.add('show');
+  document.getElementById('pay-close-btn').style.display = '';
+}
+
+function closePaymentModal() {
+  document.getElementById('paymentModal').classList.remove('show');
+  window._payAmt = 0;
+}
+
+function setPayStep(step) {
+  [1,2,3].forEach(n => {
+    const el = document.getElementById('pstep-'+n);
+    el.classList.remove('active','done');
+    if(n < step) el.classList.add('done');
+    else if(n === step) el.classList.add('active');
+  });
+  const amt = window._payAmt || 0;
+  const method = window._payMethod || 'promptpay';
+
+  if(step === 1) renderPayStep1(amt, method);
+  else if(step === 2) renderPayStep2(amt, method);
+  else if(step === 3) renderPayStep3(amt, method);
+}
+
+// ── Step 1: Confirm amount & method ──
+function renderPayStep1(amt, method) {
+  document.getElementById('pay-modal-title').textContent = 'ยืนยันการชำระเงิน';
+  const icon = method === 'promptpay' ? '🏦' : '🟠';
+  const name = method === 'promptpay' ? 'PromptPay / พร้อมเพย์' : 'TrueMoney Wallet';
+  document.getElementById('pay-body').innerHTML = `
+    <div class="pay-summary">
+      <div class="pay-sum-row"><span>จำนวนเงินที่เติม</span><strong style="color:var(--t1)">${amt.toFixed(2)} ฿</strong></div>
+      <div class="pay-sum-row"><span>ช่องทางชำระ</span><strong>${icon} ${name}</strong></div>
+      <div class="pay-sum-row"><span>ยอดหลังเติม</span><strong style="color:var(--green)">${(balance+amt).toFixed(2)} ฿</strong></div>
+      <div style="height:1px;background:var(--border);margin:.4rem 0"></div>
+      <div class="pay-sum-row total"><span>ยอดที่ต้องชำระ</span><strong>${amt.toFixed(2)} ฿</strong></div>
+    </div>
+    <div style="font-size:.78rem;color:var(--t3);background:rgba(91,141,239,.05);border:1px solid rgba(91,141,239,.12);border-radius:8px;padding:.6rem .85rem;line-height:1.6">
+      ℹ️ ระบบจำลอง — ไม่มีการหักเงินจริง กด "ดำเนินการต่อ" เพื่อจำลองกระบวนการชำระ
+    </div>`;
+  document.getElementById('pay-footer').innerHTML = `
+    <div style="display:flex;gap:.65rem">
+      <button class="btn btn-ghost" style="flex:1" onclick="closePaymentModal()">ยกเลิก</button>
+      <button class="btn btn-primary" style="flex:2;font-weight:700" onclick="setPayStep(2)">ดำเนินการต่อ →</button>
+    </div>`;
+}
+
+// ── Step 2: Payment screen ──
+function renderPayStep2(amt, method) {
+  document.getElementById('pay-modal-title').textContent = method === 'promptpay' ? 'สแกน QR พร้อมเพย์' : 'TrueMoney Wallet';
+  document.getElementById('pay-close-btn').style.display = 'none'; // disable close during payment
+
+  if(method === 'promptpay') {
+    renderPromptPay(amt);
+  } else {
+    renderTrueMoney(amt);
+  }
+}
+
+function renderPromptPay(amt) {
+  // Generate PromptPay QR (encoded as EMV QRCPS standard string - simulated)
+  const ppId = '0066812345678'; // Simulated merchant PromptPay ID
+  const ppData = 'LAUNDRYPRO-PP-' + ppId + '-' + amt.toFixed(2);
+
+  document.getElementById('pay-body').innerHTML = `
+    <div class="promptpay-wrap">
+      <div class="pp-qr-box">
+        <div class="pp-logo-bar">
+          <div style="width:32px;height:32px;background:linear-gradient(135deg,#003580,#0066cc);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem;font-weight:800">PP</div>
+          <div class="pp-logo-txt">PROMPTPAY<br><span style="font-size:.6rem;font-weight:400;color:#555">พร้อมเพย์</span></div>
+          <div style="margin-left:auto;font-size:.65rem;color:#888">ธนาคารกรุงไทย</div>
+        </div>
+        <div id="pp-qr-canvas" style="width:200px;height:200px"></div>
+        <div class="pp-amount-label">จำนวนเงิน</div>
+        <div class="pp-amount-val">${amt.toFixed(2)} บาท</div>
+        <div style="font-size:.65rem;color:#888;margin-top:.3rem">หมายเลขพร้อมเพย์ 081-234-5678</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:.6rem;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:9px;padding:.65rem .9rem;font-size:.8rem;color:var(--t2);margin-bottom:.9rem">
+      <div id="pp-timer-dot" style="width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse-dot 1.5s infinite;flex-shrink:0"></div>
+      <span>รอการชำระเงิน... หมดเวลาใน <strong id="pp-countdown" style="color:var(--amber);font-family:'JetBrains Mono',monospace">05:00</strong></span>
+    </div>
+    <div style="font-size:.75rem;color:var(--t3);text-align:center">
+      เปิดแอป Mobile Banking → สแกน QR → ยืนยันชำระ ${amt.toFixed(2)} ฿
+    </div>`;
+
+  document.getElementById('pay-footer').innerHTML = `
+    <div style="display:flex;gap:.65rem">
+      <button class="btn btn-ghost" style="flex:1" onclick="setPayStep(1)">← กลับ</button>
+      <button class="btn btn-green" style="flex:2;font-weight:700" onclick="simulatePaymentSuccess()">✅ จำลอง: ชำระแล้ว</button>
+    </div>`;
+
+  // Generate QR
+  try {
+    const wrap = document.getElementById('pp-qr-canvas');
+    const canvas = document.createElement('canvas');
+    QREncoder.renderToCanvas(ppData, canvas, {size:200, quiet:6, dark:'#003580', light:'#fff', ecc:1});
+    wrap.appendChild(canvas);
+  } catch(e) {}
+
+  // Countdown timer
+  let sec = 300;
+  if(window._ppTimer) clearInterval(window._ppTimer);
+  window._ppTimer = setInterval(() => {
+    sec--;
+    const el = document.getElementById('pp-countdown');
+    if(el) el.textContent = String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
+    if(sec <= 0) {
+      clearInterval(window._ppTimer);
+      showPayTimeout();
+    }
+  }, 1000);
+}
+
+function renderTrueMoney(amt) {
+  document.getElementById('pay-body').innerHTML = `
+    <div class="truemoney-wrap">
+      <div class="tm-card">
+        <div class="tm-logo">🟠</div>
+        <div class="tm-card-title">TrueMoney Wallet</div>
+        <div class="tm-phone">081-234-5678</div>
+        <div class="tm-name">ร้านซักผ้า LaundryPro</div>
+        <div style="position:absolute;top:.9rem;right:1rem;font-size:.72rem;opacity:.7">ยอดที่ต้องชำระ: <strong>${amt.toFixed(2)} ฿</strong></div>
+      </div>
+      <div class="tm-input-wrap">
+        <label>กรอกรหัส OTP ที่ได้รับทาง SMS (จำลอง)</label>
+        <input class="tm-input" id="tm-otp" type="text" maxlength="6" placeholder="X X X X X X" oninput="formatOTP(this)">
+      </div>
+      <div style="font-size:.75rem;color:var(--t3);margin-top:.6rem;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.15);border-radius:8px;padding:.6rem .85rem;line-height:1.6">
+        📱 ระบบจำลอง: OTP คือ <strong style="color:var(--amber);font-family:'JetBrains Mono',monospace;letter-spacing:.1em">123456</strong><br>
+        หรือกด "ชำระผ่าน App" เพื่อจำลองทันที
+      </div>
+    </div>`;
+
+  document.getElementById('pay-footer').innerHTML = `
+    <div style="display:flex;gap:.65rem;flex-direction:column">
+      <button class="btn btn-green" style="font-weight:700;font-size:.95rem" onclick="verifyTrueMoneyOTP()">✅ ยืนยัน OTP</button>
+      <div style="display:flex;gap:.65rem">
+        <button class="btn btn-ghost" style="flex:1" onclick="setPayStep(1)">← กลับ</button>
+        <button class="btn" style="flex:1;background:rgba(249,115,22,.15);color:#fb923c;border:1px solid rgba(249,115,22,.3)" onclick="simulatePaymentSuccess()">📱 ชำระผ่าน App</button>
+      </div>
+    </div>`;
+}
+
+function formatOTP(input) {
+  let val = input.value.replace(/\D/g,'').slice(0,6);
+  input.value = val.split('').join(' ');
+  if(val.length === 6) {
+    input.style.borderColor = 'rgba(249,115,22,.5)';
+  }
+}
+
+function verifyTrueMoneyOTP() {
+  const raw = (document.getElementById('tm-otp').value||'').replace(/\s/g,'');
+  if(raw !== '123456') {
+    document.getElementById('tm-otp').style.borderColor = 'rgba(245,95,95,.5)';
+    toast('OTP ไม่ถูกต้อง (ใช้ 123456 สำหรับระบบจำลอง)','e');
+    return;
+  }
+  simulatePaymentSuccess();
+}
+
+function showPayTimeout() {
+  document.getElementById('pay-body').innerHTML = `
+    <div style="text-align:center;padding:1.5rem 0">
+      <div style="font-size:3rem;margin-bottom:.75rem">⏰</div>
+      <div style="font-weight:700;font-size:1rem;color:var(--red);margin-bottom:.3rem">หมดเวลาชำระเงิน</div>
+      <div style="font-size:.83rem;color:var(--t3)">กรุณาเริ่มรายการใหม่</div>
+    </div>`;
+  document.getElementById('pay-footer').innerHTML = `
+    <button class="btn btn-primary btn-full" onclick="setPayStep(1)">ลองใหม่อีกครั้ง</button>`;
+  document.getElementById('pay-close-btn').style.display = '';
+}
+
+// ── Processing animation ──
+function simulatePaymentSuccess() {
+  if(window._ppTimer) clearInterval(window._ppTimer);
+  document.getElementById('pay-close-btn').style.display = 'none';
+  document.getElementById('pay-modal-title').textContent = 'กำลังประมวลผล...';
+  document.getElementById('pay-body').innerHTML = `
+    <div class="pay-processing">
+      <div class="pay-proc-spinner"></div>
+      <div class="pay-proc-title">กำลังตรวจสอบการชำระเงิน</div>
+      <div class="pay-proc-sub">กรุณารอสักครู่...</div>
+    </div>`;
+  document.getElementById('pay-footer').innerHTML = '';
+  [1,2].forEach(n=>{ const el=document.getElementById('pstep-'+n); el.classList.remove('active'); el.classList.add('done'); });
+
+  // Simulate ~1.5s processing delay
+  setTimeout(() => setPayStep(3), 1600);
+}
+
+// ── Step 3: Success ──
+function renderPayStep3(amt, method) {
+  const methodName = method === 'promptpay' ? 'PromptPay' : 'TrueMoney';
+  const txId = 'TXN'+Date.now().toString().slice(-10);
+
+  document.getElementById('pay-modal-title').textContent = 'ชำระเงินสำเร็จ';
+  document.getElementById('pay-close-btn').style.display = '';
+  document.getElementById('pay-body').innerHTML = `
+    <div class="pay-success">
+      <div class="pay-success-icon">✅</div>
+      <div class="pay-success-title">ชำระเงินสำเร็จ!</div>
+      <div class="pay-success-amount">+${amt.toFixed(2)} ฿</div>
+      <div class="pay-success-sub">เติมเงินผ่าน ${methodName}</div>
+    </div>
+    <div class="pay-summary" style="margin-top:.5rem">
+      <div class="pay-sum-row"><span>หมายเลขอ้างอิง</span><code style="font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:.78rem">${txId}</code></div>
+      <div class="pay-sum-row"><span>ช่องทาง</span><strong>${methodName}</strong></div>
+      <div class="pay-sum-row"><span>เวลา</span><strong>${new Date().toLocaleString('th-TH')}</strong></div>
+      <div style="height:1px;background:var(--border);margin:.4rem 0"></div>
+      <div class="pay-sum-row total"><span>ยอดคงเหลือใหม่</span><strong>${(balance+amt).toFixed(2)} ฿</strong></div>
+    </div>`;
+  document.getElementById('pay-footer').innerHTML = `
+    <button class="btn btn-green btn-full" style="font-weight:700" onclick="confirmTopupSuccess()">เสร็จสิ้น</button>`;
+
+  // Mark all steps done
+  [1,2,3].forEach(n=>{ const el=document.getElementById('pstep-'+n); el.classList.remove('active'); el.classList.add('done'); });
+}
+
+function confirmTopupSuccess() {
+  const amt = window._payAmt || 0;
+  const method = window._payMethod || 'promptpay';
+  const methodName = method === 'promptpay' ? 'PromptPay' : 'TrueMoney Wallet';
+
+  // Actually add money
+  balance += amt;
+  transactions.unshift({
+    id: Date.now(),
+    type: 'topup',
+    time: new Date().toLocaleString('th-TH'),
+    amount: amt,
+    note: 'เติมเงินผ่าน ' + methodName
+  });
+  updateBalanceUI();
+
+  // Reset form
+  document.getElementById('topup-input').value = '';
+  document.querySelectorAll('.amt-btn').forEach(b=>b.classList.remove('on'));
+  topupAmt = 0;
+
+  closePaymentModal();
+  toast(`เติมเงิน ${amt.toFixed(2)} ฿ สำเร็จ! ผ่าน ${methodName} 🎉`,'s');
+}
+
+// Legacy doTopup (kept for backward compat)
+function doTopup() { openPaymentModal(); }
+
+// ════════════════════════════════════════════════════════════
+// TRANSACTIONS
+// ════════════════════════════════════════════════════════════
+function renderTx(filter='all') {
+  const icons = {payment:'💸',topup:'💰',refund:'↩️'};
+  const labels = {payment:'ชำระค่าซักผ้า',topup:'เติมเงิน',refund:'คืนเงิน'};
+  const filtered = filter==='all' ? transactions : transactions.filter(t=>t.type===filter);
+  document.getElementById('tx-list').innerHTML = filtered.length
+    ? filtered.map(t=>`
+      <div class="titem t${t.type}">
+        <div class="tico">${icons[t.type]}</div>
+        <div class="tdetail">
+          <div class="ttype">${labels[t.type]}</div>
+          <div class="tnote">${t.note}</div>
+          <div class="ttime">${t.time}</div>
+        </div>
+        <div class="tamt ${t.type==='topup'||t.type==='refund'?'ta-plus':'ta-minus'}">${t.type==='topup'||t.type==='refund'?'+':'-'}${t.amount.toFixed(2)} ฿</div>
+      </div>`).join('')
+    : `<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-text">ไม่มีรายการ</div></div>`;
+}
+
+function filterTx(f,btn) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTx(f);
+}
+
+// ════════════════════════════════════════════════════════════
+// VENDING
+// ════════════════════════════════════════════════════════════
+function renderVending() {
+  document.getElementById('vend-balance').textContent = balance.toFixed(2);
+  document.getElementById('products-grid').innerHTML = products.map(p=>`
+    <div class="prod-card ${p.stock===0?'oos':''}">
+      <div class="prod-ico">${p.ico}</div>
+      <div class="prod-name">${p.name}</div>
+      <div class="prod-stock ${p.stock>0&&p.stock<5?'low':''}">${p.stock===0?'สินค้าหมด':`คงเหลือ ${p.stock} ชิ้น`}</div>
+      <div class="prod-price">${p.price.toFixed(2)} ฿</div>
+      <button class="btn ${balance>=p.price&&p.stock>0?'btn-green':'btn-ghost'}" style="width:100%;margin-top:.3rem" onclick="buyProduct(${p.id})" ${p.stock===0||balance<p.price?'disabled':''}>
+        ${p.stock===0?'หมดแล้ว':balance<p.price?'เงินไม่พอ':'ซื้อเลย'}
+      </button>
+    </div>`).join('');
+}
+
+function buyProduct(id) {
+  const p = products.find(x=>x.id===id);
+  if(!p||p.stock===0||balance<p.price) return;
+  p.stock--; balance -= p.price;
+  transactions.unshift({id:Date.now(),type:'payment',time:new Date().toLocaleString('th-TH'),amount:p.price,note:`ซื้อสินค้า: ${p.name}`});
+  updateBalanceUI();
+  toast(`ซื้อ ${p.name} สำเร็จ! หักเงิน ${p.price} ฿`,'s');
+  renderVending();
+}
+
+// ════════════════════════════════════════════════════════════
+// ADMIN
+// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// ADMIN TAB SWITCHING
+// ════════════════════════════════════════════════════════════
+let currentAdminTab = 'dashboard';
+const adminTabs = ['dashboard','machines','report','members','settings'];
+
+function switchAdminTab(tab) {
+  currentAdminTab = tab;
+  adminTabs.forEach(t=>{
+    document.getElementById('adm-tab-'+t).style.display = t===tab?'block':'none';
+    const btn = document.getElementById('sb-'+t);
+    if(btn) btn.classList.toggle('active', t===tab);
+  });
+  if(tab==='dashboard') renderAdminDashboard();
+  else if(tab==='machines') renderAdminMachines();
+  else if(tab==='report') renderAdminReport();
+  else if(tab==='members') renderAdminMembers();
+  else if(tab==='settings') renderAdminSettings();
+}
+
+function renderAdmin() { switchAdminTab('dashboard'); }
+
+// ─── Dashboard Tab ───
+function renderAdminDashboard() {
+  document.getElementById('adm-date').textContent = new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('adm-av').textContent = machines.filter(m=>m.status==='available').length;
+  document.getElementById('adm-run').textContent = machines.filter(m=>m.status==='running').length;
+
+  const total = machines.length;
+  const counts = {available:0,running:0,finished:0,maintenance:0};
+  machines.forEach(m=>counts[m.status]=(counts[m.status]||0)+1);
+  const statDefs = [{k:'available',c:'var(--green)',l:'ว่าง'},{k:'running',c:'var(--accent)',l:'กำลังซัก'},{k:'finished',c:'var(--purple)',l:'เสร็จแล้ว'},{k:'maintenance',c:'var(--amber)',l:'ซ่อมบำรุง'}];
+  document.getElementById('ms-list').innerHTML = statDefs.map(s=>`
+    <div class="ms-row">
+      <div class="ms-dot" style="background:${s.c}"></div>
+      <div class="ms-name">${s.l}</div>
+      <div class="ms-bar"><div class="ms-fill" style="background:${s.c};width:${Math.round((counts[s.k]||0)/total*100)}%"></div></div>
+      <div class="ms-count">${counts[s.k]||0}</div>
+    </div>`).join('');
+
+  const labels=[],inc=[],bkData=[];
+  for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);labels.push(`${d.getDate()}/${d.getMonth()+1}`);inc.push(Math.round(300+Math.random()*500));bkData.push(Math.round(6+Math.random()*20));}
+  const ctx=document.getElementById('incomeChart').getContext('2d');
+  if(window._chart) window._chart.destroy();
+  window._chart=new Chart(ctx,{type:'line',data:{labels,datasets:[
+    {label:'รายได้ (฿)',data:inc,borderColor:'#5b8def',backgroundColor:'rgba(91,141,239,.08)',tension:.4,fill:true,pointBackgroundColor:'#5b8def',pointRadius:4},
+    {label:'การจอง',data:bkData,borderColor:'#2ed8a0',backgroundColor:'rgba(46,216,160,.08)',tension:.4,fill:true,pointBackgroundColor:'#2ed8a0',pointRadius:4,yAxisID:'y2'}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8892a8',font:{size:11}}}},scales:{x:{ticks:{color:'#4a5268',font:{size:11}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#4a5268',font:{size:11}},grid:{color:'rgba(255,255,255,.04)'},beginAtZero:true},y2:{position:'right',ticks:{color:'#4a5268',font:{size:11}},grid:{display:false},beginAtZero:true}}}});
+}
+
+// ─── Machines Tab ───
+function renderAdminMachines() {
+  document.getElementById('adm-mach-date').textContent = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  const statusLabel2={available:'ว่าง',running:'กำลังซัก',finished:'เสร็จแล้ว',maintenance:'ซ่อมบำรุง'};
+  const statusColor={available:'var(--green)',running:'var(--accent)',finished:'var(--purple)',maintenance:'var(--amber)'};
+  document.getElementById('adm-machines-tbody').innerHTML = machines.map(m=>`
+    <tr class="adm-tr">
+      <td class="adm-td adm-td-main">เครื่อง #${m.id}</td>
+      <td class="adm-td">${m.type}</td>
+      <td class="adm-td">${m.cap} kg</td>
+      <td class="adm-td">${m.price} ฿</td>
+      <td class="adm-td">
+        <span style="color:${statusColor[m.status]};font-weight:600;display:flex;align-items:center;gap:.35rem">
+          <span style="width:7px;height:7px;border-radius:50%;background:${statusColor[m.status]};display:inline-block"></span>
+          ${statusLabel2[m.status]}
+        </span>
+      </td>
+      <td class="adm-td">
+        <select style="background:var(--s3);border:1px solid var(--border);border-radius:7px;color:var(--t2);padding:.3rem .65rem;font-size:.8rem;font-family:var(--font);cursor:pointer" onchange="adminChangeStatus(${m.id},this.value)">
+          <option value="">เปลี่ยนสถานะ...</option>
+          <option value="available">✅ ว่าง</option>
+          <option value="maintenance">🔧 ซ่อมบำรุง</option>
+          <option value="finished">✔ เสร็จแล้ว</option>
+        </select>
+      </td>
+    </tr>`).join('');
+}
+
+function adminChangeStatus(machineId, newStatus) {
+  if(!newStatus) return;
+  const m = machines.find(x=>x.id===machineId);
+  if(!m) return;
+  if(m.status==='running'){toast('ไม่สามารถเปลี่ยนสถานะขณะเครื่องกำลังซักได้','e');renderAdminMachines();return;}
+  m.status = newStatus;
+  updateBalanceUI();
+  toast(`อัปเดตเครื่อง #${machineId} เป็น "${newStatus}" แล้ว`,'s');
+  renderAdminMachines();
+}
+
+// ─── Report Tab ───
+function renderAdminReport() {
+  document.getElementById('adm-rep-date').textContent = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  // 30-day chart
+  const labels30=[],data30=[];
+  for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);labels30.push(`${d.getDate()}/${d.getMonth()+1}`);data30.push(Math.round(200+Math.random()*600));}
+  const ctx2=document.getElementById('reportChart').getContext('2d');
+  if(window._repChart) window._repChart.destroy();
+  window._repChart=new Chart(ctx2,{type:'bar',data:{labels:labels30,datasets:[{label:'รายได้ (฿)',data:data30,backgroundColor:'rgba(91,141,239,.35)',borderColor:'#5b8def',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5268',font:{size:10},maxTicksLimit:10},grid:{display:false}},y:{ticks:{color:'#4a5268',font:{size:11}},grid:{color:'rgba(255,255,255,.04)'},beginAtZero:true}}}});
+  // Income by machine type
+  const typeIncome={'Front Load':Math.round(3000+Math.random()*2000),'Top Load':Math.round(1500+Math.random()*1000),'Commercial':Math.round(2000+Math.random()*1500)};
+  const maxInc=Math.max(...Object.values(typeIncome));
+  document.getElementById('machine-income-bars').innerHTML=Object.entries(typeIncome).map(([t,v])=>`
+    <div style="background:var(--s3);border-radius:10px;padding:.9rem">
+      <div style="font-size:.8rem;font-weight:600;margin-bottom:.5rem">${t}</div>
+      <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-bottom:.4rem">
+        <div style="height:100%;width:${Math.round(v/maxInc*100)}%;background:var(--accent);border-radius:3px"></div>
+      </div>
+      <div style="font-size:.95rem;font-weight:700;color:var(--amber)">${v.toLocaleString()} ฿</div>
+    </div>`).join('');
+}
+
+// ─── Members Tab ───
+const memberData = [
+  {id:1,name:'สมชาย ทดสอบ',username:'somchai',phone:'081-234-5678',balance:500,bookings:15,active:true},
+  {id:2,name:'สมหญิง ใจดี',username:'somying',phone:'089-876-5432',balance:250,bookings:8,active:true},
+  {id:3,name:'วิชัย มีสุข',username:'wichai',phone:'062-111-2222',balance:1200,bookings:32,active:true},
+  {id:4,name:'นารี รักดี',username:'naree',phone:'085-333-4444',balance:0,bookings:3,active:false},
+  {id:5,name:'ประสิทธิ์ ดีงาม',username:'prasit',phone:'090-555-6666',balance:800,bookings:21,active:true},
+  {id:6,name:'มาลี วานิช',username:'malee',phone:'094-777-8888',balance:150,bookings:5,active:true},
+];
+
+function renderAdminMembers(filter='') {
+  const filtered = filter ? memberData.filter(m=>m.name.includes(filter)||m.username.includes(filter)||m.phone.includes(filter)) : memberData;
+  document.getElementById('members-tbody').innerHTML = filtered.length ? filtered.map(m=>`
+    <tr class="adm-tr">
+      <td class="adm-td">${m.id}</td>
+      <td class="adm-td adm-td-main">${m.name}</td>
+      <td class="adm-td" style="font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--accent)">${m.username}</td>
+      <td class="adm-td">${m.phone}</td>
+      <td class="adm-td" style="font-weight:700;color:${m.balance>0?'var(--amber)':'var(--t3)'}">${m.balance.toFixed(2)}</td>
+      <td class="adm-td">${m.bookings} ครั้ง</td>
+      <td class="adm-td">
+        <span style="font-size:.75rem;font-weight:600;padding:.2rem .6rem;border-radius:999px;${m.active?'background:rgba(46,216,160,.12);color:var(--green)':'background:rgba(245,95,95,.12);color:var(--red)'}">
+          ${m.active?'ใช้งาน':'ระงับ'}
+        </span>
+      </td>
+    </tr>`).join('')
+  : `<tr><td colspan="7" style="padding:2.5rem;text-align:center;color:var(--t3)">ไม่พบสมาชิกที่ค้นหา</td></tr>`;
+}
+
+function filterMembers() {
+  renderAdminMembers(document.getElementById('member-search').value.trim());
+}
+
+// ─── Settings Tab ───
+function renderAdminSettings() {
+  document.getElementById('settings-machines').innerHTML = machines.map(m=>`
+    <div class="price-row">
+      <span class="price-row-label">เครื่อง #${m.id} (${m.type})</span>
+      <div style="display:flex;align-items:center;gap:.4rem">
+        <input class="price-edit" type="number" value="${m.price}" onchange="updateMachinePrice(${m.id},this.value)" min="1">
+        <span style="font-size:.8rem;color:var(--t3)">฿</span>
+      </div>
+    </div>`).join('')+`<button class="btn btn-primary btn-full" style="margin-top:.5rem" onclick="toast('บันทึกค่าบริการทั้งหมดแล้ว','s')">💾 บันทึก</button>`;
+}
+
+function updateMachinePrice(id, val) {
+  const m = machines.find(x=>x.id===id);
+  if(m && val>0) m.price = parseFloat(val);
+}
+
+// ════════════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════════════
+function toast(msg,type='i') {
+  const area = document.getElementById('toastArea');
+  const el = document.createElement('div');
+  el.className = `tst tst-${type}`;
+  el.textContent = msg;
+  area.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(110%)';el.style.transition='.3s';setTimeout(()=>el.remove(),300);},3200);
+}
+
+// ════════════════════════════════════════════════════════════
+// AUTO TIMER — every 5s
+// ════════════════════════════════════════════════════════════
+setInterval(()=>{
+  let changed = false;
+  const now = Date.now();
+
+  // 1) ตรวจ pending → auto-cancel เมื่อเกิน 10 นาที
+  activeBookings.forEach(b=>{
+    if(b.status==='pending' && b.checkinDeadline && now > b.checkinDeadline){
+      b.status = 'auto_cancelled';
+      const m = machines.find(x=>x.id===b.machineId);
+      if(m && m.status==='booked') { m.status='available'; }
+      // คืนเงิน
+      balance += b.price;
+      transactions.unshift({
+        id:Date.now()+b.bookingId,
+        type:'refund',
+        time:new Date().toLocaleString('th-TH'),
+        amount:b.price,
+        note:`คืนเงิน — ไม่ Check-in ภายเวลา ${b.machineName}`
+      });
+      bookingHistory.unshift({
+        bookingId:b.bookingId,
+        machineName:b.machineName,
+        machineType:b.machineType,
+        price:b.price,
+        bookedAt:new Date(b.bookedAt).toLocaleString('th-TH'),
+        status:'auto_cancelled',
+        refunded:true
+      });
+      changed = true;
+      toast(`⏰ ยกเลิก ${b.machineName} อัตโนมัติ — ไม่ Check-in ภายใน 10 นาที คืนเงิน ${b.price} ฿`,'e');
+    }
+  });
+
+  // 2) ตรวจ running → finished เมื่อหมดเวลาซัก
+  machines.forEach(m=>{
+    if(m.status==='running'&&m.endAt&&now>m.endAt){
+      m.status='finished'; changed=true;
+      toast(`เครื่อง #${m.id} ซักเสร็จแล้ว! กรุณามารับผ้า 👕`,'i');
+      const b = activeBookings.find(x=>x.machineId===m.id&&x.status==='running');
+      if(b){
+        b.status='finished';
+        bookingHistory.unshift({bookingId:b.bookingId,machineName:b.machineName,machineType:b.machineType,price:b.price,bookedAt:new Date(b.bookedAt).toLocaleString('th-TH'),status:'finished'});
+      }
+    }
+  });
+
+  if(changed){
+    updateBalanceUI();
+    const pgM=document.getElementById('page-machines');
+    if(pgM.classList.contains('active')) renderMachines();
+    const pgB=document.getElementById('page-mybookings');
+    if(pgB.classList.contains('active')) renderMyBookings();
+  }
+},5000);
+
+// ════════════════════════════════════════════════════════════
+// AUTH SYSTEM
+// ════════════════════════════════════════════════════════════
+const USERS = {
+  member: [
+    {username:'member01',password:'1234',name:'สมชาย ทดสอบ',role:'member',balance:500},
+    {username:'member02',password:'1234',name:'สมหญิง ใจดี',role:'member',balance:250},
+  ],
+  employee: [
+    {username:'emp01',password:'1234',name:'วิภา พนักงาน',role:'employee',balance:0},
+  ],
+  admin: [
+    {username:'admin',password:'admin',name:'ผู้ดูแลระบบ',role:'admin',balance:0},
+  ],
+};
+
+const HINTS = {
+  member:  'ทดสอบ: <code>member01</code> / <code>1234</code>',
+  employee:'ทดสอบ: <code>emp01</code> / <code>1234</code>',
+  admin:   'ทดสอบ: <code>admin</code> / <code>admin</code>',
+};
+
+let currentRole = 'member';
+let currentUser = null;
+
+// ─── localStorage helpers ───
+const LS_USERS_KEY = 'laundrypro_registered_users';
+const LS_SESSION_KEY = 'laundrypro_session';
+
+function saveRegisteredUsers() {
+  try { localStorage.setItem(LS_USERS_KEY, JSON.stringify(registeredUsers)); } catch(e){}
+}
+function loadRegisteredUsers() {
+  try {
+    const raw = localStorage.getItem(LS_USERS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+function saveSession(user) {
+  try {
+    // Save minimal session info (no password)
+    const session = {username:user.username, role:user.role, name:user.name,
+      phone:user.phone||'', displayPhone:user.displayPhone||'', balance:user.balance||0};
+    localStorage.setItem(LS_SESSION_KEY, JSON.stringify(session));
+  } catch(e){}
+}
+function clearSession() {
+  try { localStorage.removeItem(LS_SESSION_KEY); } catch(e){}
+}
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(LS_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+// Load registered users from localStorage on startup
+let registeredUsers = loadRegisteredUsers();
+
+function switchRole(role) {
+  currentRole = role;
+  ['member','employee','admin'].forEach(r=>{
+    document.getElementById('tab-'+r).classList.toggle('active', r===role);
+  });
+  document.getElementById('login-hint-text').innerHTML = HINTS[role];
+  document.getElementById('login-error').classList.remove('show');
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+}
+
+function doLogin() {
+  const u = document.getElementById('login-username').value.trim();
+  const p = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+  if(!u || !p){ showLoginError('กรุณากรอก Username และ Password'); shakeInputs(); return; }
+
+  // Loading state
+  btn.disabled = true;
+  document.getElementById('login-btn-text').innerHTML = '<span class="spinner"></span> กำลังเข้าสู่ระบบ...';
+
+  setTimeout(()=>{
+    // Check pool
+    const pool = [...(USERS[currentRole]||[]), ...registeredUsers.filter(r=>r.role===currentRole)];
+    const user = pool.find(x=>x.username===u && x.password===p);
+
+    btn.disabled = false;
+    document.getElementById('login-btn-text').textContent = 'เข้าสู่ระบบ';
+
+    if(!user){ showLoginError('Username หรือ Password ไม่ถูกต้อง'); shakeInputs(); return; }
+    loginSuccess(user);
+  }, 700);
+}
+
+function loginSuccess(user) {
+  currentUser = user;
+  // Sync balance from localStorage for registered users
+  if(user.role === 'member') {
+    const stored = registeredUsers.find(u=>u.username===user.username);
+    if(stored) { user.balance = stored.balance; }
+    balance = user.balance || 0;
+  }
+  saveSession(user);
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('main-nav').style.display = 'flex';
+
+  // Update nav
+  const initials = user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('nav-avatar').textContent = initials;
+  document.getElementById('nav-username').textContent = user.name;
+  // Update wallet username
+  const walletUser = document.getElementById('wallet-username');
+  if(walletUser) walletUser.textContent = '👤 ' + user.name;
+
+  const roleLabelMap = {member:'สมาชิก', employee:'พนักงาน', admin:'Admin'};
+  const roleClassMap = {member:'role-member', employee:'role-employee', admin:'role-admin'};
+  const rb = document.getElementById('nav-role-badge');
+  rb.textContent = roleLabelMap[user.role];
+  rb.className = 'nav-role ' + roleClassMap[user.role];
+
+  // Show/hide nav buttons based on role
+  const adminBtn = document.getElementById('nav-admin');
+  const walletBtn = document.getElementById('nav-balance');
+  if(user.role === 'admin' || user.role === 'employee'){
+    adminBtn.style.display = '';
+    walletBtn.style.display = 'none';
+  } else {
+    adminBtn.style.display = 'none';
+    walletBtn.style.display = '';
+    updateBalanceUI();
+  }
+
+  // Go to appropriate landing page
+  if(user.role === 'admin') show('admin');
+  else if(user.role === 'employee') show('machines');
+  else { show('home'); renderHome(); }
+}
+
+function doLogout() {
+  if(!confirm('ต้องการออกจากระบบ?')) return;
+  clearSession();
+  currentUser = null;
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('main-nav').style.display = 'none';
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').classList.remove('show');
+  switchRole('member');
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  document.getElementById('login-error-text').textContent = msg;
+  el.classList.add('show');
+}
+function shakeInputs() {
+  ['login-username','login-password'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.classList.add('shake');
+    setTimeout(()=>el.classList.remove('shake'), 450);
+  });
+}
+
+function showRegister() {
+  document.getElementById('login-form-card').style.display = 'none';
+  document.getElementById('register-form-card').style.display = 'block';
+  document.getElementById('reg-error').classList.remove('show');
+}
+function showLogin() {
+  document.getElementById('register-form-card').style.display = 'none';
+  document.getElementById('login-form-card').style.display = 'block';
+}
+// ─── Phone input formatter ───
+function formatPhoneInput(input) {
+  // Remove all non-digits
+  let val = input.value.replace(/\D/g,'');
+  // Remove leading 0 if user typed it
+  if(val.startsWith('0')) val = val.slice(1);
+  // Remove leading 66 if user typed it
+  if(val.startsWith('66')) val = val.slice(2);
+  // Remove leading 6 only if next digit makes it 66x
+  // Cap at 9 digits (Thai mobile without leading 0)
+  if(val.length > 9) val = val.slice(0,9);
+  input.value = val;
+  // Visual feedback
+  const valid = isValidThaiPhone(val);
+  input.style.borderColor = val.length === 0 ? '' : valid ? 'rgba(46,216,160,.5)' : 'rgba(245,95,95,.4)';
+}
+
+function isValidThaiPhone(digits) {
+  // digits = 9 chars without leading 0, e.g. "812345678"
+  // Full Thai mobile: 06x,08x,09x — so digit[0] must be 6,8, or 9
+  if(digits.length !== 9) return false;
+  if(!['6','8','9'].includes(digits[0])) return false;
+  return /^\d{9}$/.test(digits);
+}
+
+function formatDisplayPhone(digits) {
+  // "812345678" → "+66 81-234-5678"
+  if(!digits || digits.length !== 9) return '+66 ' + digits;
+  return '+66 ' + digits[0] + digits[1] + '-' + digits.slice(2,5) + '-' + digits.slice(5);
+}
+
+function doRegister() {
+  const name  = document.getElementById('reg-name').value.trim();
+  const rawPhone = document.getElementById('reg-phone').value.trim().replace(/\D/g,'');
+  // Strip leading 0 or 66 if user accidentally typed them
+  let phoneDigits = rawPhone;
+  if(phoneDigits.startsWith('66')) phoneDigits = phoneDigits.slice(2);
+  if(phoneDigits.startsWith('0'))  phoneDigits = phoneDigits.slice(1);
+  const uname = document.getElementById('reg-username').value.trim();
+  const pwd   = document.getElementById('reg-password').value;
+  const errEl = document.getElementById('reg-error');
+
+  function showErr(msg) {
+    document.getElementById('reg-error-text').textContent = msg;
+    errEl.classList.add('show');
+  }
+
+  // ── Validation ──
+  if(!name || !rawPhone || !uname || !pwd) { showErr('กรุณากรอกข้อมูลให้ครบทุกช่อง'); return; }
+
+  // Name: at least 2 chars, Thai or English
+  if(name.length < 2) { showErr('ชื่อ-นามสกุลต้องมีอย่างน้อย 2 ตัวอักษร'); return; }
+
+  // Phone validation
+  if(!isValidThaiPhone(phoneDigits)) {
+    if(phoneDigits.length !== 9) {
+      showErr('เบอร์โทรต้องมี 9 ตัว (ไม่รวม 0 นำหน้า) รวมเป็น 10 หลัก เช่น 812345678');
+    } else {
+      showErr('เบอร์โทรศัพท์ไทยต้องขึ้นต้นด้วย 6, 8 หรือ 9 เช่น 6x, 8x, 9x');
+    }
+    document.getElementById('reg-phone').style.borderColor = 'rgba(245,95,95,.5)';
+    return;
+  }
+
+  // Build stored phone as "+66XXXXXXXXX" (E.164)
+  const e164Phone = '+66' + phoneDigits;
+  const displayPhone = formatDisplayPhone(phoneDigits);
+
+  // Check duplicate phone
+  const allUsers = [...USERS.member, ...registeredUsers];
+  if(allUsers.find(u=>u.phone===e164Phone)){ showErr('เบอร์โทร '+displayPhone+' ถูกใช้งานแล้ว'); return; }
+
+  // Password
+  if(pwd.length < 4) { showErr('Password ต้องมีอย่างน้อย 4 ตัวอักษร'); return; }
+
+  // Username
+  if(uname.length < 3) { showErr('Username ต้องมีอย่างน้อย 3 ตัวอักษร'); return; }
+  if(!/^[a-zA-Z0-9_]+$/.test(uname)) { showErr('Username ใช้ได้เฉพาะ a-z, 0-9 และ _ เท่านั้น'); return; }
+  if(allUsers.find(u=>u.username===uname)){ showErr('Username "'+uname+'" ถูกใช้งานแล้ว'); return; }
+
+  // ── Register ──
+  const newUser = {username:uname, password:pwd, name, phone:e164Phone, displayPhone, role:'member', balance:100};
+  registeredUsers.push(newUser);
+  saveRegisteredUsers(); // persist to localStorage
+  memberData.push({id:memberData.length+1, name, username:uname, phone:displayPhone, balance:100, bookings:0, active:true});
+
+  // Reset form
+  document.getElementById('reg-phone').style.borderColor = '';
+  errEl.classList.remove('show');
+
+  showLogin();
+  toast('สมัครสมาชิกสำเร็จ! ยินดีต้อนรับ ' + name + ' 🎉', 's');
+  document.getElementById('login-username').value = uname;
+  document.getElementById('login-password').value = pwd;
+  switchRole('member');
+}
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+// ─── Auto-restore session on page load ───
+(function restoreSession() {
+  const session = loadSession();
+  if(!session) return; // No session → show login screen
+
+  // Find user in USERS or registeredUsers
+  const pool = [
+    ...(USERS[session.role] || []),
+    ...registeredUsers
+  ];
+  const user = pool.find(u => u.username === session.username);
+
+  if(user) {
+    // Sync balance from session (latest value before refresh)
+    if(session.role === 'member') user.balance = session.balance;
+    loginSuccess(user);
+  } else {
+    // Registered user not found in pool (shouldn't happen) — clear session
+    clearSession();
+  }
+})();
+
+// Check for mobile checkin URL params
+checkMobileCheckin();
+</script>
+</body>
+</html>
